@@ -1,0 +1,282 @@
+---
+title: "Hyperspectral_extraction"
+author: "Matheus Ardigueri"
+format: html
+---
+
+### Set up
+#### Loading libraries.
+
+```{r}
+#| message: false
+#| warning: false
+
+
+
+library(webshot)
+library(webshot2)
+library(tinytex)
+library(rmarkdown)
+library(raster)
+library(FIELDimageR)
+library(FIELDimageR.Extra)
+library(terra)
+library(mapview)
+library(sf)
+library(stars)
+library(nlme)
+library(imager)
+library(leafsync)
+library(pliman)
+library(gdalUtilities)
+library(ggplot2)
+library(gridExtra)
+library(RStoolbox)
+library(patchwork)
+library(tidyr)
+library(caret)
+library(e1071)    
+library(xgboost)    
+library(nnet)
+library(dplyr)
+library(viridis)
+library(hyperSpec)
+library(randomForest)
+library(exactextractr)
+library(stringr)
+library(kernlab)
+library(purrr)
+```
+
+#### Importing dataset.
+```{r}
+image <- rast("../Images/08_13_2024_mosaic.tif")
+
+image # Checking image dimensions and coordinates. 
+
+fieldView(image) # Viewing image, might take some time.
+```
+
+#### Importing plots to crop image.
+```{r}
+plots_to_crop <- read_sf("../Plots/Cutting_blocks.shp") # Shapefile format
+
+plots_to_crop # Checking shapefile dimensions, and coordinate system (CRS)
+
+plots_to_crop <- st_transform(plots_to_crop, crs = 32617) # Convert coordinates if necessary
+
+fieldView(image, plots_to_crop) # Viewing image with plots, side by side.
+```
+#### Crop image only in plots.
+
+```{r}
+image_crop <- terra::mask(crop(image, plots_to_crop), plots_to_crop)
+
+plotRGB(image_crop,r = 119, g= 75, b=32)
+
+```
+### Calculating vegetation index to extract:
+
+  For pika L, sensor ranges from 400 - 1000 nm (VIS-NIR) and band cover is      around 2 nm per band, since we have 300 bands resulting from one image.
+
+Blue : 400 - 500 nm (bands 1 - 50)
+Green : 500 - 600 nm (bands 51 - 100)
+Red : 600 - 700 nm (bands 101 - 150)
+Red Edge : 700 - 750 nm (bands 151 - 175)
+Near Infrared : 750 - 1000 nm (bands 176 - 300)
+
+```{r}
+indices <- mosaic_index(
+  image_crop, 
+  index = "NDVI", 
+  r = 119, 
+  g = 75, 
+  b = 35, 
+  re = 160, 
+  nir = 180
+) 
+```
+
+### Creating samples for random forest classification:
+
+In this step, we will create polygons to assign samples for the class that we want to add on our classification. As this is a code to remove soil and extract reflectance values, our classes will be SOIL, PLANTS, OTHERS (IF NEEDED), >= 2 classes can be assigned.
+
+#### Indicating soil class.
+```{r}
+image <- indices$NDVI # Using VI to better visualize the image, can change for any image if using multispectral or others.
+
+soil<-fieldView(mosaic = image, editor = TRUE)
+soil<-st_as_sf(st_sample(soil, 500))
+soil$class<-'soil'
+
+```
+
+#### Indicating plants class.
+```{r}
+plants<-fieldView(mosaic = image, editor = TRUE)
+plants<-st_as_sf(st_sample(plants, 500))
+plants$class<-'plants'
+
+
+```
+
+#### Indicating other class.
+```{r}
+
+other_class<-fieldView(mosaic = image, editor = TRUE)
+other_class<-st_as_sf(st_sample(other_class, 400))
+other_class$class<-'other_class'
+```
+
+#### Creating training bind
+```{r}
+bind_for_training<-rbind(soil,plants) # If using other class, add (, other_class)
+```
+
+#### Creating classification models:
+
+This chunk below automated the entire classification workflow. I
+```{r}
+run_classification_models <- function(
+  raster_data, 
+  training_data,
+  models = c("rf","svmRadial","xgbTree"),
+  response_col = "class",
+  tune_length = 3,
+  kfold = 5,
+  train_partition = 0.7,
+  min_dist = 0,
+  plot_results = TRUE
+) {
+  # Garantir nomes únicos
+  names(raster_data) <- make.unique(names(raster_data))
+
+  # Converter para Spatial se necessário
+  if (!inherits(training_data, "Spatial")) {
+    training_data <- as(training_data, "Spatial")
+  }
+
+  results <- list()
+
+  for (model in models) {
+    message(paste("Treinando modelo:", model))
+    
+    model_result <- superClass(
+      raster_data,
+      trainData = training_data,
+      responseCol = response_col,
+      model = model,
+      tuneLength = tune_length,
+      kfold = kfold,
+      trainPartition = train_partition,
+      minDist = min_dist
+    )
+    
+    result_name <- paste0("result_", toupper(model))
+    
+    if (plot_results) {
+      plot(model_result$map, main = paste("Mapa classificado -", model))
+      fieldView(raster_data, model_result$map)
+      print(model_result$validation$performance)
+    }
+    
+    results[[result_name]] <- model_result
+  }
+
+  return(results)
+}
+
+```
+
+### Performing Classification.
+```{r}
+band_result <- run_classification_models(raster_data = indices$NDVI, 
+                                         training_data = bind_for_training,
+                                         models = c("rf", "svmRadial", "xgbTree"),
+                                         kfold = 5,
+                                         train_partition = 0.7,
+                                         plot_results = TRUE)
+
+```
+
+### Extracting Soil Mask
+```{r}
+# create logical mask (soil = TRUE, plants = FALSE)
+soilmask <- band_result$result_RF$map == 1  # or == 1 depending on your class coding
+
+# apply mask to ALL bands of the hyperspectral image
+ortosolo <- raster::mask(image_crop, soilmask, maskvalue = 0)   # remove soil (class 1)
+
+# check the number of bands
+nlyr(ortosolo)
+
+#View raster
+
+fieldView(ortosolo)
+
+# save as BIL (all bands preserved)
+image_2 <- writeRaster(
+  ortosolo,
+    filename = "../Output/08_13_2024_mosaic_remsoil_1.tiff",
+  overwrite = TRUE
+)
+```
+
+### Extract Reflectance Data.
+
+#### Importing Exeperimental Plots and Dropping Geometry.
+```{r}
+Exp_plots <- read_sf("../Plots/Effective_plots.shp")
+
+
+```
+
+#### Checking if Coordinates Match and if column ID is needed.
+```{r}
+Exp_plots 
+
+image_2
+
+```
+
+#### Creating ID column, if necessary
+```{r}
+names(Exp_plots)
+
+Exp_plots <- Exp_plots%>% # Only to rename
+  rename(ID = ID_1)
+
+names(Exp_plots)
+```
+
+#### Performing Zonal Statistics to Table.
+```{r}
+avg_spectra <- terra::extract(image_2,Exp_plots,'mean', na.rm= TRUE)
+
+```
+
+#### Creating New Table to Join Extracted Data
+```{r}
+Exp_p_2 <- Exp_plots%>%  #Plot that will be used to join after.
+  st_drop_geometry() %>%
+  select(c(ID, Treatment, Cultivar2,id)) %>%
+  rename(cultivar_id = id)
+```
+
+#### Merging columns
+```{r}
+joined <- left_join(Exp_p_2, avg_spectra, by = "ID")
+```
+
+#### Exporting Results to CSV Table
+```{r}
+write.csv(joined, "../Output/08_13_24_data.csv",row.names = FALSE, quote = TRUE)
+```
+
+### Reading Data to Plot Analysis Graphs.
+```{r}
+df_spec_values <- read.csv("../Output/08_13_24_data.csv")
+
+df_spec_values
+
+```
