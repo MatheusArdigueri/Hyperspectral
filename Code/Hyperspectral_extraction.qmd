@@ -50,7 +50,7 @@ library(purrr)
 
 #### Importing dataset.
 ```{r}
-image <- rast("../Images/08_13_2024_mosaic.tif")
+image <- rast("../Images/mosaic_09_20_24.tif")
 
 image # Checking image dimensions and coordinates. 
 
@@ -202,7 +202,7 @@ band_result <- run_classification_models(raster_data = indices$NDVI,
 ### Extracting Soil Mask
 ```{r}
 # create logical mask (soil = TRUE, plants = FALSE)
-soilmask <- band_result$result_RF$map == 1  # or == 1 depending on your class coding
+soilmask <- band_result$result_XGBTREE$map == 1  # or == 1 depending on your class coding
 
 # apply mask to ALL bands of the hyperspectral image
 ortosolo <- raster::mask(image_crop, soilmask, maskvalue = 0)   # remove soil (class 1)
@@ -217,7 +217,7 @@ fieldView(ortosolo)
 # save as BIL (all bands preserved)
 image_2 <- writeRaster(
   ortosolo,
-    filename = "../Output/08_13_2024_mosaic_remsoil_1.tiff",
+    filename = "../Output/09_20_2024_mosaic_remsoil.tiff",
   overwrite = TRUE
 )
 ```
@@ -270,13 +270,82 @@ joined <- left_join(Exp_p_2, avg_spectra, by = "ID")
 
 #### Exporting Results to CSV Table
 ```{r}
-write.csv(joined, "../Output/08_13_24_data.csv",row.names = FALSE, quote = TRUE)
+write.csv(joined, "../Output/09_20_2024_data.csv",row.names = FALSE, quote = TRUE)
 ```
 
-### Reading Data to Plot Analysis Graphs.
+### Reading Data to Plot Basic Check Graphs.
 ```{r}
 df_spec_values <- read.csv("../Output/08_13_24_data.csv")
 
 df_spec_values
 
 ```
+
+#### Wrangling to convert band number to wavelength and rename columns:
+```{r}
+wavelengths <- seq(400, 1000, length.out = 300)
+
+df_spec_values_w <- df_spec_values %>%
+  rename_with(
+    ~ paste0("b_", seq_along(.)),
+    starts_with("mosaic_09_20_24_")
+  ) %>%
+  rename(cultivar = Cultivar2)%>%
+  pivot_longer(cols = starts_with("b_"),
+    names_to = "band",
+    values_to = "reflectance"
+  )%>%
+  mutate(
+    band_num = as.numeric(str_remove(band, "b_")),
+    wavelength = wavelengths[band_num]
+  ) %>% 
+  group_by(Treatment, cultivar, wavelength) %>%
+  summarise(
+    mean_reflectance = mean(reflectance, na.rm = TRUE),
+    .groups = "drop"
+  )
+ 
+df_spec_values_w
+```
+
+#### Spectral line plot
+```{r}
+p_combined <- df_spec_values_w %>%
+  ggplot(aes(
+    x = wavelength,
+    y = mean_reflectance,
+    color = Treatment
+  )) +
+  geom_line(linewidth = 0.5) +
+  facet_wrap(~ cultivar, nrow = 3, ncol = 3) +
+  labs(
+    title = element_blank(),
+    x = "Wavelength (nm)",
+    y = "Reflectance values",
+    color = "Treatment"
+  ) +
+  theme_gray() +
+  theme(
+    strip.text = element_text(size = 18, colour = "black", face = "bold"), 
+  legend.position = c(0.92, 0.12), 
+  legend.background = element_blank(),
+  ylab("Reflectance"),
+  xlab("Wavelength (nm)"),
+  axis.text.x = element_text(size = 20, face = "bold", margin = ggplot2::margin(b = 10)),
+  axis.text.y = element_text(size = 20, face = "bold", margin = ggplot2::margin(l = 10)),
+  axis.title.x = element_text(size = 22, face = "bold", margin = ggplot2::margin(t = 15)),
+  axis.title.y = element_text(size = 22, face = "bold", margin = ggplot2::margin(r = 15)),
+  legend.title = element_text(size = 22, face = "bold"),
+  legend.text = element_text(size = 20, face = "bold"))
+
+ggsave(
+  plot = p_combined,
+  filename = "../Output/Reflectance_curves_by_cultivar_9_plots.png",
+  dpi = 600,
+  width = 13,
+  height = 15
+)
+
+p_combined
+```
+
