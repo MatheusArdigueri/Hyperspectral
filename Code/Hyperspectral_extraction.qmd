@@ -221,6 +221,9 @@ image_2 <- writeRaster(
   overwrite = TRUE
 )
 ```
+```{r}
+image_2 <- rast("../Output/09_20_2024_mosaic_remsoil.tiff")
+```
 
 ### Extract Reflectance Data.
 
@@ -270,16 +273,91 @@ joined <- left_join(Exp_p_2, avg_spectra, by = "ID")
 
 #### Exporting Results to CSV Table
 ```{r}
-write.csv(joined, "../Output/09_20_2024_data.csv",row.names = FALSE, quote = TRUE)
+write.csv(joined, "../Output/09_20_24_data_3.csv",row.names = FALSE, quote = TRUE)
 ```
 
 ### Reading Data to Plot Basic Check Graphs.
 ```{r}
-df_spec_values <- read.csv("../Output/08_13_24_data.csv")
+df08_13_24 <- read.csv("../Output/08_13_24_data_3.csv")
+
+df08_20_24 <- read.csv("../Output/08_20_24_data_3.csv")
+
+df08_27_24 <- read.csv("../Output/08_27_24_data_3.csv")
+
+df09_20_24 <- read.csv("../Output/09_20_24_data_3.csv")
 
 df_spec_values
 
 ```
+
+```{r}
+library(dplyr)
+
+standardize_bands <- function(df, band_start_col = 5, expected_bands = 300) {
+  n_bands <- ncol(df) - (band_start_col - 1)
+
+  if (n_bands != expected_bands) {
+    stop("Expected ", expected_bands, " band columns starting at col ", band_start_col,
+         ", but found ", n_bands, ".")
+  }
+
+  band_idx <- band_start_col:ncol(df)
+
+  names(df)[band_idx] <- paste0("b_", seq_len(n_bands))
+
+  df
+}
+
+```
+
+```{r}
+df08_13_24_s <- standardize_bands(df08_13_24)
+df08_20_24_s <- standardize_bands(df08_20_24)
+df08_27_24_s <- standardize_bands(df08_27_24)
+df09_20_24_s <- standardize_bands(df09_20_24)
+
+```
+
+```{r}
+library(dplyr)
+
+# Your fixed columns
+id_cols <- c("ID", "Treatment", "Cultivar2", "cultivar_id")
+
+# (assuming you already created df08_13_24_s etc. with b_1...b_300)
+df_all <- bind_rows(
+  mutate(df08_13_24_s, date = as.Date("2024-08-13")),
+  mutate(df08_20_24_s, date = as.Date("2024-08-20")),
+  mutate(df08_27_24_s, date = as.Date("2024-08-27")),
+  mutate(df09_20_24_s, date = as.Date("2024-09-20"))
+) %>%
+  # optional: put date right after the id columns
+  relocate(date, .after = all_of(id_cols))
+
+
+
+df_all[] <- lapply(df_all, function(col) {
+  if (is.character(col)) {
+    gsub(pattern = "[\r\n]+", replacement = " ", x = col)
+  } else {
+    col
+  }
+})
+
+
+
+
+write.csv(df_all, "../Output/all_data_3.csv",row.names = FALSE, quote = TRUE)
+```
+
+
+```{r}
+class(df)
+class(df_all)
+ls()
+
+```
+
 
 #### Wrangling to convert band number to wavelength and rename columns:
 ```{r}
