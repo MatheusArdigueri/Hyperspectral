@@ -1,0 +1,1504 @@
+---
+title: "01_Wrangling"
+author: "Matheus Ardigueri"
+date: "2026-01-27"
+output: html_document
+---
+
+# 1) Setup
+```{r Loading Packages, message=FALSE, warning=FALSE}
+#install.packages("glmnet")
+
+library(readxl) # to read excel files
+library(janitor) # to clean data
+library(dplyr) # wrangling
+library(tidyr) # wrangling
+library(readr)
+library(tidyverse)
+library(ggplot2)
+library(glmnet)
+library(randomForest)
+library(readxl)
+library(dplyr)
+library(tidyr)
+library(purrr)
+library(stringr)
+library(janitor)
+#install.packages("corrplot")
+library(corrplot)
+library(ggplot2)
+library(gridExtra)
+library(ggcorrplot)
+library(caret)
+#install.packages("ranger")
+library(ranger)
+library(lubridate)
+```
+
+```{r Loading Dataset with images, message=FALSE, warning=FALSE}
+
+ponder <- read.csv("../Data/2024_reflectance.csv", sep = ";")
+
+
+ponder
+```
+
+```{r Cleaning Colum Names}
+clean_ponder <- ponder %>%
+  clean_names() %>%
+  mutate(across(8:ncol(.), as.numeric)) %>%
+  select(-cultivar_id)
+
+clean_ponder
+
+```
+
+# 2) Data view 
+# 2.1) Boxplots
+
+```{r Combined Plot For Dates Collected in 2024}
+
+# Main plot
+phys_vars <- c("ca", "cb", "cx_c", "pn", "gs", "etr")
+
+ponder_long_2024 <- clean_ponder %>%
+  mutate(across(all_of(phys_vars), as.numeric)) %>%
+  mutate(dap = as.factor(dap)) %>%
+  pivot_longer(
+    cols = all_of(phys_vars),
+    names_to = "variable",
+    values_to = "value"
+  ) %>%
+  filter(year == 2024)
+  
+
+variable_labels_f <- c(
+  gs = "Stomata Cond. (mol m-2s-1)",
+  pn = "Net Photo (µmol m-2s-1)",
+  etr = "ETR (µmol m-2s-1)",
+  ca = "Chl.a (µg/cm-2)",
+  cb = "Chl.b (µg/cm-2)",
+  cx_c = "Car (µg/cm-2)"
+)
+
+bp_physilog_only_selected_dates <- ggplot(
+  ponder_long_2024,
+  aes(
+    x = dap,
+    y = value,
+    fill = treatment,
+    group = interaction(dap, treatment)
+  )
+) +
+  geom_boxplot() +
+  facet_wrap(~ variable, scales = "free_y",
+             labeller = labeller(variable = variable_labels_f))+
+  scale_fill_viridis_d(name = "Treatments") +
+  xlab("Days After Planting") +
+  labs(fill = "Treatments") +
+  ylab("Physiological Variables Values")+
+  theme_light() +
+  theme(
+  strip.text = element_text(size = 18, colour = "black", face = "bold"), 
+  legend.position = c(0.945,0.59), 
+  legend.background = element_blank(),
+  axis.text.x = element_text(size = 17, face = "bold", margin = ggplot2::margin(b = 10), angle = 90),
+  axis.text.y = element_text(size = 18, face = "bold", margin = ggplot2::margin(l = 10)),
+  axis.title.x = element_text(size = 20, face = "bold", margin = ggplot2::margin(t = 15)),
+  axis.title.y = element_text(size = 20, face = "bold", margin = ggplot2::margin(r = 15)),
+  legend.title = element_text(size = 17, face = "bold"),
+  legend.text = element_text(size = 17, face = "bold"))
+
+    
+
+# Combine plots
+
+
+bp_physilog_only_selected_dates
+
+#Save
+
+# ggsave(
+#  filename = "../Output/Boxplots/2024_bp_phys.png",
+#   plot = bp_physilog_only_selected_dates,
+#   dpi = 300,
+#   height = 10,
+#   width = 16
+# )
+
+```
+
+```{r Combined Plot For Dates Collected in 2025}
+ponder_long_2025 <- clean_ponder %>%
+  mutate(across(all_of(phys_vars), as.numeric)) %>%
+  mutate(dap = as.factor(dap)) %>%
+  pivot_longer(
+    cols = all_of(phys_vars),
+    names_to = "variable",
+    values_to = "value"
+  ) %>%
+  filter(year == 2025)
+
+bp_physilog_only_selected_dates_25 <- ggplot(
+  ponder_long_2025,
+  aes(
+    x = dap,
+    y = value,
+    fill = treatment,
+    group = interaction(dap, treatment)
+  )
+) +
+  geom_boxplot() +
+  facet_wrap(~ variable, scales = "free_y",
+             labeller = labeller(variable = variable_labels_f))+
+  scale_fill_viridis_d(name = "Treatments") +
+  xlab("Days After Planting") +
+  labs(fill = "Treatments") +
+  ylab("Physiological Variables Values")+
+  theme_light() +
+  theme(
+  strip.text = element_text(size = 18, colour = "black", face = "bold"), 
+  legend.position = c(0.945,0.59), 
+  legend.background = element_blank(),
+  axis.text.x = element_text(size = 17, face = "bold", margin = ggplot2::margin(b = 10), angle = 90),
+  axis.text.y = element_text(size = 18, face = "bold", margin = ggplot2::margin(l = 10)),
+  axis.title.x = element_text(size = 20, face = "bold", margin = ggplot2::margin(t = 15)),
+  axis.title.y = element_text(size = 20, face = "bold", margin = ggplot2::margin(r = 15)),
+  legend.title = element_text(size = 17, face = "bold"),
+  legend.text = element_text(size = 17, face = "bold"))
+
+    
+
+# Combine plots
+
+
+bp_physilog_only_selected_dates_25
+
+# Save
+# ggsave(
+#  filename = "../Output/Boxplots/2025_bp_phys.png",
+#   plot = bp_physilog_only_selected_dates_25,
+#   dpi = 300,
+#   height = 10,
+#   width = 16
+# )
+```
+
+```{r Wrangling to combine cultivars and analyze individual relations}
+ponder_cult_spec <- clean_ponder %>%
+  pivot_longer(
+    cols = all_of(phys_vars),
+    names_to = "variable",
+    values_to = "value"
+  )
+
+names(ponder_long_2024$genotype)
+```
+
+```{r Boxplot phys x cultivars}
+
+bp_phys_cult <- ggplot(
+  ponder_long_2024,
+  aes(
+    x = genotype,
+    y = value,
+    fill = treatment,
+    group = interaction(genotype, treatment)
+  )
+) +
+  geom_boxplot() +
+  facet_wrap(~ variable, scales = "free_y",
+             labeller = labeller(variable = variable_labels_f))+
+  scale_fill_viridis_d(name = "Treatments") +
+  xlab("Genotype") +
+  labs(fill = "Treatments") +
+  ylab("Physiological Variables Values")+
+  theme_light() +
+  theme(
+  strip.text = element_text(size = 18, colour = "black", face = "bold"), 
+  legend.position = c(0.945,0.59), 
+  legend.background = element_blank(),
+  axis.text.x = element_text(size = 17, face = "bold", margin = ggplot2::margin(b = 10), angle = 90),
+  axis.text.y = element_text(size = 18, face = "bold", margin = ggplot2::margin(l = 10)),
+  axis.title.x = element_text(size = 20, face = "bold", margin = ggplot2::margin(t = 15)),
+  axis.title.y = element_text(size = 20, face = "bold", margin = ggplot2::margin(r = 15)),
+  legend.title = element_text(size = 17, face = "bold"),
+  legend.text = element_text(size = 17, face = "bold"))
+
+
+
+bp_phys_cult
+
+# ggsave(bp_phys_cult,
+#        filename= "../Output/Boxplots/bp_phys_cult_2024.png",
+#        height = 10,
+#        width = 16)
+
+
+
+```
+
+```{r}
+bp_phys_cults25 <- ggplot(
+  ponder_long_2025,
+  aes(
+    x = genotype,
+    y = value,
+    fill = treatment,          # DAP as discrete for legend/colors
+    group = interaction( genotype, treatment)
+  )
+) +
+  geom_boxplot(
+    linewidth = 1,
+    position = position_dodge2(width = 0.85, preserve = "single")
+  ) +
+  facet_wrap(
+    ~ variable,
+    scales = "free_y",
+    labeller = labeller(variable = variable_labels_f)
+  ) +
+  scale_fill_viridis_d(name = "Treatment") +
+  guides(
+    linetype = guide_legend(order = 2)
+  ) +
+  xlab("Genotype") +
+  ylab("Physiological Variables Values") +
+  theme_light() +
+  theme(
+    strip.text = element_text(size = 18, colour = "black", face = "bold"),
+    legend.position = c(0.15, 0.07),
+    legend.direction = "vertical",
+    legend.box = "vertical",
+    legend.background = element_blank(),
+    legend.title = element_text(size = 17, face = "bold"),
+    legend.text  = element_text(size = 17, face = "bold"),
+    axis.text.x  = element_text(size = 17, face = "bold",
+                                margin = ggplot2::margin(b = 10), angle = 90),
+    axis.text.y  = element_text(size = 18, face = "bold",
+                                margin = ggplot2::margin(l = 10)),
+    axis.title.x = element_text(size = 20, face = "bold",
+                                margin = ggplot2::margin(t = 15)),
+    axis.title.y = element_text(size = 20, face = "bold",
+                                margin = ggplot2::margin(r = 15))
+  )
+
+bp_phys_cults25
+
+# ggsave(
+#   bp_phys_cults25,
+#   filename = "../Output/Boxplots/bp_phys_cults255.png",
+#        height = 10,
+#        width = 16
+# )
+```
+
+```{r}
+bp_phys_cults24 <- ggplot(
+  ponder_long_2024,
+  aes(
+    x = genotype,
+    y = value,
+    fill = factor(dap),          # DAP as discrete for legend/colors
+    linetype = treatment,
+    group = interaction(dap, genotype, treatment)
+  )
+) +
+  geom_boxplot(
+    linewidth = 1,
+    position = position_dodge2()
+  ) +
+  facet_wrap(
+    ~ variable,
+    scales = "free_y",
+    labeller = labeller(variable = variable_labels_f)
+  ) +
+  scale_fill_viridis_d(name = "DAP") +
+  scale_linetype_discrete(name = "Treatment") +
+  guides(
+    fill     = guide_legend(order = 1),
+    linetype = guide_legend(order = 2)
+  ) +
+  xlab("Genotype") +
+  ylab("Physiological Variables Values") +
+  theme_light() +
+  theme(
+    strip.text = element_text(size = 18, colour = "black", face = "bold"),
+    legend.position = c(0.15, 0.07),
+    legend.direction = "horizontal",
+    legend.box = "horizontal",
+    legend.background = element_blank(),
+    legend.title = element_text(size = 17, face = "bold"),
+    legend.text  = element_text(size = 17, face = "bold"),
+    axis.text.x  = element_text(size = 17, face = "bold",
+                                margin = ggplot2::margin(b = 10), angle = 90),
+    axis.text.y  = element_text(size = 18, face = "bold",
+                                margin = ggplot2::margin(l = 10)),
+    axis.title.x = element_text(size = 20, face = "bold",
+                                margin = ggplot2::margin(t = 15)),
+    axis.title.y = element_text(size = 20, face = "bold",
+                                margin = ggplot2::margin(r = 15))
+  )
+
+bp_phys_cults24
+
+# ggsave(
+#   bp_phys_cults24,
+#   filename = "../Output/Boxplots/bp_phys_cults24.png",
+#        height = 11,
+#        width = 18,
+#   dpi = 900
+# )
+```
+
+
+```{r Combined Plot for All Dates}
+# bp_all_physiolog_dates <- ggplot(
+#   ponder_long_p,
+#   aes(
+#     x = dap,
+#     y = value,
+#     fill = drought_treatment,
+#     group = interaction(dap, drought_treatment)
+#   )
+# ) +
+#   geom_boxplot() +
+#   
+#   facet_wrap(~ variable, scales = "free_y", labeller = labeller(variable = variable_labels_p))+
+#   scale_color_viridis_d() +
+#   xlab("Days After Planting") +
+#   labs(color = "Stress Situation", fill = "Treatments") +
+#   ylab("Physiological Variables Values")+
+#   
+#   theme_light() +
+#   theme(
+#     strip.text = element_text(size = 18, colour = "black", face = "bold"), 
+#   legend.position = c(0.94,0.09), 
+#   legend.background = element_blank(),
+#   axis.text.x = element_text(size = 17, face = "bold", margin = ggplot2::margin(b = 10)),
+#   axis.text.y = element_text(size = 18, face = "bold", margin = ggplot2::margin(l = 10)),
+#   axis.title.x = element_text(size = 20, face = "bold", margin = ggplot2::margin(t = 15)),
+#   axis.title.y = element_text(size = 20, face = "bold", margin = ggplot2::margin(r = 15)),
+#   legend.title = element_text(size = 17, face = "bold"),
+#   legend.text = element_text(size = 17, face = "bold"))
+#     
+# bp_all_physiolog_dates
+
+# ggsave(
+#   filename = "../Output/Boxplots/Physiology_alldates_boxplots.png",
+#   plot = bp_all_physiolog_dates,
+#   dpi = 300,
+#   width = 13,
+#   height = 10
+# )
+```
+
+# 3) Spectral Curves
+```{r Converting Bands to Wavelength and Grouping by to Calculate Mean}
+wavelengths <- seq(400, 1000, length.out = 300)
+
+df_avg_24 <- clean_ponder %>%
+  filter(year == 2024) %>%
+  pivot_longer(
+    cols = starts_with("b_"),
+    names_to = "band",
+    values_to = "reflectance"
+  ) %>%
+  mutate(
+    band_num = as.numeric(str_remove(band, "b_")),
+    wavelength = wavelengths[band_num]
+  ) %>% 
+  group_by(treatment, genotype, wavelength) %>%
+  summarise(
+    mean_reflectance = mean(reflectance, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+df_avg_25 <- clean_ponder %>%
+  filter(year == 2025) %>%
+  pivot_longer(
+    cols = starts_with("b_"),
+    names_to = "band",
+    values_to = "reflectance"
+  ) %>%
+  mutate(
+    band_num = as.numeric(str_remove(band, "b_")),
+    wavelength = wavelengths[band_num]
+  ) %>% 
+  group_by(treatment, genotype, wavelength) %>%
+  summarise(
+    mean_reflectance = mean(reflectance, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+
+```
+
+```{r Naming Different Contrasted Colors}
+cultivar_colors <- c(
+  "#0072B2",  # blue
+  "#E69F00",  # orange
+  "#009E73",  # bluish green
+  "#56B4E9",  # sky blue
+  "#D55E00",  # vermillion
+  "#CC79A7",  # purple
+  "#F0E442",  # yellow (safe contrast)
+  "#999999",  # gray
+  "black"  ) # black
+
+all_cultivars <- sort(unique(c(
+  df_avg_24$genotype,
+  df_avg_25$genotype
+)))
+
+# If you don't have enough colors, repeat or expand palette
+if (length(all_cultivars) > length(cultivar_colors)) {
+  cultivar_colors <- rep(cultivar_colors, length.out = length(all_cultivars))
+}
+
+# Assign names consistently
+names(cultivar_colors) <- all_cultivars
+```
+
+```{r Creating Reflectance Plot plot for each different cultivar 2024}
+# B = 400
+# G = 550
+# R = 660
+
+p_ref_facet_cultivar_24 <- df_avg_24 %>%
+  ggplot(aes(
+    x = wavelength,
+    y = mean_reflectance,
+    color = treatment
+  )) +
+  geom_line(linewidth = 0.7) +
+  geom_vline(xintercept = 450, colour = "blue") +
+  geom_vline(xintercept = 550, color = "green") +
+  geom_vline(xintercept = 660, color = "red") +
+  scale_color_viridis_d() +
+  facet_wrap(~ genotype, nrow = 3, ncol = 3) +
+  labs(
+    title = element_blank(),
+    x = "Wavelength (nm)",
+    y = "Reflectance values",
+    color = "Treatment"
+  ) +
+  theme_gray() +
+  theme(
+    strip.text = element_text(size = 18, colour = "black", face = "bold"), 
+  legend.position = c(0.92, 0.12), 
+  legend.background = element_blank(),
+  ylab("Reflectance"),
+  xlab("Wavelength (nm)"),
+  axis.text.x = element_text(size = 20, face = "bold", margin = ggplot2::margin(b = 10)),
+  axis.text.y = element_text(size = 20, face = "bold", margin = ggplot2::margin(l = 10)),
+  axis.title.x = element_text(size = 22, face = "bold", margin = ggplot2::margin(t = 15)),
+  axis.title.y = element_text(size = 22, face = "bold", margin = ggplot2::margin(r = 15)),
+  legend.title = element_text(size = 22, face = "bold"),
+  legend.text = element_text(size = 20, face = "bold"))
+
+p_ref_facet_cultivar_24
+
+# ggsave(
+#   plot = p_ref_facet_cultivar_24,
+#   filename = "../Output/Spectral/p_ref_facet_cultivar_24.png",
+#   dpi = 600,
+#   width = 16,
+#   height = 13
+# )
+
+```
+
+```{r Creating Reflectance Plot plot for each different cultivar 2025}
+p_ref_facet_cultivar_25 <- df_avg_25 %>%
+  ggplot(aes(
+    x = wavelength,
+    y = mean_reflectance,
+    color = treatment
+  )) +
+  geom_line(linewidth = 0.7) +
+  
+  scale_color_viridis_d() +
+  facet_wrap(~ genotype, nrow = 3, ncol = 3) +
+  labs(
+    title = element_blank(),
+    x = "Wavelength (nm)",
+    y = "Reflectance values",
+    color = "Treatment"
+  ) +
+  theme_gray() +
+  geom_vline(xintercept = 450, colour = "blue") +
+  geom_vline(xintercept = 550, color = "green") +
+  geom_vline(xintercept = 660, color = "red") +
+  theme(
+    strip.text = element_text(size = 18, colour = "black", face = "bold"), 
+  legend.position = c(0.92, 0.12), 
+  legend.background = element_blank(),
+  ylab("Reflectance"),
+  xlab("Wavelength (nm)"),
+  axis.text.x = element_text(size = 20, face = "bold", margin = ggplot2::margin(b = 10)),
+  axis.text.y = element_text(size = 20, face = "bold", margin = ggplot2::margin(l = 10)),
+  axis.title.x = element_text(size = 22, face = "bold", margin = ggplot2::margin(t = 15)),
+  axis.title.y = element_text(size = 22, face = "bold", margin = ggplot2::margin(r = 15)),
+  legend.title = element_text(size = 22, face = "bold"),
+  legend.text = element_text(size = 20, face = "bold"))
+
+p_ref_facet_cultivar_25
+
+# ggsave(
+#   plot = p_ref_facet_cultivar_25,
+#   filename = "../Output/Spectral/p_ref_facet_cultivar_25.png",
+#   dpi = 600,
+#   width = 16,
+#   height = 13
+# )
+```
+
+
+```{r Creating Reflectance Plot plot for each different cultivar zoomed in 24}
+p_spec_zoom_24 <- df_avg_24 %>%
+  ggplot(aes(
+    x = wavelength,
+    y = mean_reflectance,
+    color = treatment
+  )) +
+  geom_line(linewidth = 0.7) +
+  scale_color_viridis_d() +
+  facet_wrap(~ genotype, nrow = 3, ncol = 3) +
+  labs(
+    title = element_blank(),
+    x = "Wavelength (nm)",
+    y = "Reflectance values",
+    color = "Treatment"
+  ) +
+  coord_cartesian(xlim = c(740, 1000)) +
+  theme_gray() +
+  theme(
+    strip.text = element_text(size = 18, colour = "black", face = "bold"), 
+  legend.position = c(0.92, 0.12), 
+  legend.background = element_blank(),
+  ylab("Reflectance"),
+  xlab("Wavelength (nm)"),
+  axis.text.x = element_text(size = 20, face = "bold", margin = ggplot2::margin(b = 10)),
+  axis.text.y = element_text(size = 20, face = "bold", margin = ggplot2::margin(l = 10)),
+  axis.title.x = element_text(size = 22, face = "bold", margin = ggplot2::margin(t = 15)),
+  axis.title.y = element_text(size = 22, face = "bold", margin = ggplot2::margin(r = 15)),
+  legend.title = element_text(size = 22, face = "bold"),
+  legend.text = element_text(size = 20, face = "bold"))
+
+p_spec_zoom_24
+
+# ggsave(
+#   plot = p_spec_zoom_24,
+#   filename = "../Output/Spectral/p_spec_zoom_24.png",
+#   dpi = 600,
+#   width = 16,
+#   height = 13
+# )
+
+```
+
+```{r Creating Reflectance Plot plot for each different cultivar zoomed in 25}
+p_spec_zoom_25 <- df_avg_25 %>%
+  ggplot(aes(
+    x = wavelength,
+    y = mean_reflectance,
+    color = treatment
+  )) +
+  geom_line(linewidth = 0.7) +
+  scale_color_viridis_d() +
+  facet_wrap(~ genotype, nrow = 3, ncol = 3) +
+  labs(
+    title = element_blank(),
+    x = "Wavelength (nm)",
+    y = "Reflectance values",
+    color = "Treatment"
+  ) +
+  coord_cartesian(xlim = c(740, 1000)) +
+  theme_gray() +
+  theme(
+    strip.text = element_text(size = 18, colour = "black", face = "bold"), 
+  legend.position = c(0.92, 0.12), 
+  legend.background = element_blank(),
+  ylab("Reflectance"),
+  xlab("Wavelength (nm)"),
+  axis.text.x = element_text(size = 20, face = "bold", margin = ggplot2::margin(b = 10)),
+  axis.text.y = element_text(size = 20, face = "bold", margin = ggplot2::margin(l = 10)),
+  axis.title.x = element_text(size = 22, face = "bold", margin = ggplot2::margin(t = 15)),
+  axis.title.y = element_text(size = 22, face = "bold", margin = ggplot2::margin(r = 15)),
+  legend.title = element_text(size = 22, face = "bold"),
+  legend.text = element_text(size = 20, face = "bold"))
+
+p_spec_zoom_25
+
+# ggsave(
+#   plot = p_spec_zoom_25,
+#   filename = "../Output/Spectral/p_spec_zoom_25.png",
+#   dpi = 600,
+#   width = 16,
+#   height = 13
+# )
+
+```
+
+```{r Separating treatment in plots and cultivars as HUE}
+p_combined_irrigation_2_plots <- df_avg_24 %>%
+  ggplot(aes(
+    x = wavelength,
+    y = mean_reflectance,
+    color = genotype
+  )) +
+  geom_line(linewidth = 0.5) +
+  facet_wrap(~ treatment, nrow = 1) +
+  scale_color_manual(values = cultivar_colors) +
+  labs(
+    title = element_blank(),
+    x = "Wavelength (nm)",
+    y = "Reflectance values",
+    color = "Cultivar"
+  ) +
+  coord_cartesian(xlim = c(740, 1000)) +   # Zoom into Red Edge + NIR (Remove for whole graph)
+  theme_light() +
+  theme(
+    strip.text = element_text(size = 18, colour = "black", face = "bold"), 
+  legend.position = c(0.89, 0.20), 
+  legend.background = element_blank(),
+  axis.text.x = element_text(size = 17, face = "bold", margin = ggplot2::margin(b = 10)),
+  axis.text.y = element_text(size = 18, face = "bold", margin = ggplot2::margin(l = 10)),
+  axis.title.x = element_text(size = 20, face = "bold", margin = ggplot2::margin(t = 15)),
+  axis.title.y = element_text(size = 20, face = "bold", margin = ggplot2::margin(r = 15)),
+  legend.title = element_text(size = 17, face = "bold"),
+  legend.text = element_text(size = 17, face = "bold"))
+
+p_combined_irrigation_2_plots
+
+# ggsave(
+#   filename = "../Output/Spectral_plots/Reflectance_curves_by_treatments_zoom_NIR.png",
+#   plot = p_combined_irrigation_2_plots,
+#   dpi = 600,
+#   width = 13,
+#   height = 10
+# )
+
+```
+```{r Suport function and setup to spectral graphs by date.}
+make_mean_spectra <- function(df, target_year, wavelengths_vec) {
+  df %>%
+    filter(year == target_year) %>%
+    pivot_longer(
+      cols = starts_with("b_"),
+      names_to = "band",
+      values_to = "reflectance"
+    ) %>%
+    mutate(
+      band_num = as.numeric(str_remove(band, "b_")),
+      wavelength = wavelengths_vec[band_num]
+    ) %>%
+    group_by(year, dap, treatment, genotype, wavelength) %>%
+    summarise(
+      mean_reflectance = mean(reflectance, na.rm = TRUE),
+      .groups = "drop"
+    )
+}
+
+spectra_mean_2024 <- make_mean_spectra(clean_ponder, 2024, wavelengths)
+spectra_mean_2025 <- make_mean_spectra(clean_ponder, 2025, wavelengths)
+
+spectra_mean_2024 <- spectra_mean_2024 %>%
+  filter(dap != 75) %>%
+  droplevels()
+spectra_mean_2024 <- spectra_mean_2024 %>%
+  mutate(dap = factor(dap, levels = sort(unique(dap))))
+
+spectra_mean_2025 <- spectra_mean_2025 %>%
+  mutate(dap = factor(dap, levels = sort(unique(dap))))
+```
+
+```{r Combined Grid 24}
+p_combined_irrigation_grid_2024 <- spectra_mean_2024 %>%
+  ggplot(aes(
+    x = wavelength,
+    y = mean_reflectance,
+    color = genotype
+  )) +
+  geom_line(linewidth = 0.5) +
+  facet_grid(treatment ~ dap,
+             labeller = labeller(
+    dap = function(x) paste("DAP", x)
+  )) +
+  scale_color_manual(values = cultivar_colors) +
+  coord_cartesian(xlim = c(400, 1000)) +
+  theme_gray() +
+  labs(
+    title = element_blank(),
+    x = "Wavelength (nm)",
+    y = "Reflectance values",
+    color = "Genotype"
+  ) +
+  theme(
+    strip.text = element_text(size = 18, colour = "black", face = "bold"), 
+  legend.position = c(0.925, 0.12), 
+  legend.background = element_blank(),
+  axis.text.x = element_text(size = 17, face = "bold", margin = ggplot2::margin(b = 10)),
+  axis.text.y = element_text(size = 18, face = "bold", margin = ggplot2::margin(l = 10)),
+  axis.title.x = element_text(size = 20, face = "bold", margin = ggplot2::margin(t = 15)),
+  axis.title.y = element_text(size = 20, face = "bold", margin = ggplot2::margin(r = 15)),
+  legend.title = element_text(size = 17, face = "bold"),
+  legend.text = element_text(size = 17, face = "bold"))
+
+p_combined_irrigation_grid_2024
+
+# ggsave(plot = p_combined_irrigation_grid_2024,
+#        filename = "../Output/Spectral/combined_irrigation_DAP_24.png",
+#        dpi = 600,
+#        width = 18,
+#       height = 13
+#        )
+
+```
+
+```{r Combined Grid 25}
+p_combined_irrigation_grid_2025 <- spectra_mean_2025 %>%
+  ggplot(aes(
+    x = wavelength,
+    y = mean_reflectance,
+    color = genotype
+  )) +
+  geom_line(linewidth = 0.5) +
+  labs(
+    title = element_blank(),
+    x = "Wavelength (nm)",
+    y = "Reflectance values",
+    color = "Genotype"
+  ) +
+  facet_grid(treatment ~ dap,
+             labeller = labeller(
+    dap = function(x) paste("DAP", x)
+  )) +
+  scale_color_manual(values = cultivar_colors) +
+  coord_cartesian(xlim = c(400, 1000)) +
+  theme_gray() +
+  theme(
+    strip.text = element_text(size = 18, colour = "black", face = "bold"), 
+  legend.position = c(0.925, 0.14), 
+  legend.background = element_blank(),
+  axis.text.x = element_text(size = 17, face = "bold", margin = ggplot2::margin(b = 10)),
+  axis.text.y = element_text(size = 18, face = "bold", margin = ggplot2::margin(l = 10)),
+  axis.title.x = element_text(size = 20, face = "bold", margin = ggplot2::margin(t = 15)),
+  axis.title.y = element_text(size = 20, face = "bold", margin = ggplot2::margin(r = 15)),
+  legend.title = element_text(size = 17, face = "bold"),
+  legend.text = element_text(size = 17, face = "bold"))
+
+p_combined_irrigation_grid_2025
+
+# ggsave(plot = p_combined_irrigation_grid_2025,
+#        filename = "../Output/Spectral/combined_irrigation_DAP_25.png",
+#        dpi = 600,
+#        width = 18,
+#       height = 13
+#        )
+
+```
+
+## Calculating vegetation indexes to correlation.
+
+Chlorophyll pigments:
+Chlorophyll indices - (https://doi.org/10.1078/0176-1617-00887) 
+CIGreen - (RNIR/R520–585)-1
+REGCI - (RNIR/R695–740)-1 
+MCARI - [(R7002R670)20.2(R7002R550)·(R700/R670) (https://ntrs.nasa.gov/api/citations/19950010604/downloads/19950010604.pdf) *minimizing the effects of nonphotosynthetic materials on spectral estimates of absorbed photo synthetically active radiation.*
+
+
+#4) Feature Selection and Correlation.
+
+```{r Define response variables for 24}
+phys_vars <- c("gs", "pn","etr","ca","cb","cx_c")
+
+clean_ponder_na24 <- clean_ponder %>%
+  drop_na()
+  
+X24 <- clean_ponder_na %>%
+  filter(year == 2024) %>%
+  select(starts_with("b_")) %>%
+  as.matrix()
+
+X24 <- scale(X)
+```
+
+```{r Run Elastic Net (α = 0.5) for each trait}
+enet_results <- map_df(phys_vars, function(var) {
+  
+  y <- clean_ponder_na[[var]]
+  
+  cv_enet <- cv.glmnet(
+    x = X,
+    y = y,
+    alpha = 0.9,          # Elastic Net
+    standardize = TRUE,
+    nfolds = 20
+  )
+  
+  coef_mat <- coef(cv_enet, s = "lambda.min")
+  
+  tibble(
+    band = rownames(coef_mat),
+    coefficient = as.numeric(coef_mat),
+    variable = var
+  ) %>%
+    filter(band != "(Intercept)") %>%
+    mutate(
+      abs_coef = abs(coefficient),
+      band_num = as.numeric(str_remove(band, "b_"))
+    )
+})
+
+# write_csv(enet_results,'../Output/enet_results.csv')
+
+```
+
+
+
+
+```{r Elastic Net Feature Selection}
+enet_results <- map_df(phys_vars, function(var) {
+  
+  y <- clean_ponder_na24[[var]]
+  
+  cv_enet <- cv.glmnet(
+    x = X24,
+    y = y,
+    alpha = 0.6,          # Elastic Net
+    standardize = TRUE,
+    nfolds = 20
+  )
+  
+  coef_mat <- coef(cv_enet, s = "lambda.min")
+  
+  tibble(
+    band = rownames(coef_mat),
+    coefficient = as.numeric(coef_mat),
+    variable = var
+  ) %>%
+    filter(band != "(Intercept)") %>%
+    mutate(
+      abs_coef = abs(coefficient),
+      band_num = as.numeric(str_remove(band, "b_"))
+    ) %>%
+    arrange(desc(abs_coef)) %>%     # sort by importance
+    slice_head(n = 50)              # keep only top 15 bands
+})
+
+```
+
+
+```{r Select important bands}
+selected_bands <- enet_results %>%
+  filter(abs_coef != 0)
+
+```
+
+```{r}
+band_to_wavelength <- function(band_num,
+                               wl_min = 400,
+                               wl_max = 1000,
+                               n_bands = 300) {
+  wl_min + (band_num - 1) * (wl_max - wl_min) / (n_bands - 1)
+}
+```
+
+```{r}
+selected_bands_wl <- selected_bands %>%
+  mutate(
+    wavelength = round(band_to_wavelength(band_num),0)
+  )
+
+```
+
+
+```{r}
+ggplot(data = selected_bands_wl,
+       aes(x = wavelength,
+           y = coefficient
+           )) +
+  geom_line() +
+  facet_wrap(~ variable, scales = "free_y") +
+  geom_hline(yintercept = 0) 
+  
+
+  
+```
+```{r Define response variables for 25}
+phys_vars <- c("gs", "pn","etr","ca","cb","cx_c")
+
+clean_ponder_na25 <- clean_ponder %>%
+  drop_na()
+  
+X25 <- clean_ponder_na25 %>%
+  filter(year == 2025) %>%
+  select(starts_with("b_")) %>%
+  as.matrix()
+
+X25 <- scale(X)
+```
+
+```{r Elastic Net 2025}
+enet_results25 <- map_df(phys_vars, function(var) {
+  
+  y <- clean_ponder_na25[[var]]
+  
+  cv_enet <- cv.glmnet(
+    x = X25,
+    y = y,
+    alpha = 0.6,          # Elastic Net
+    standardize = TRUE,
+    nfolds = 20
+  )
+  
+  coef_mat <- coef(cv_enet, s = "lambda.min")
+  
+  tibble(
+    band = rownames(coef_mat),
+    coefficient = as.numeric(coef_mat),
+    variable = var
+  ) %>%
+    filter(band != "(Intercept)") %>%
+    mutate(
+      abs_coef = abs(coefficient),
+      band_num = as.numeric(str_remove(band, "b_"))
+    ) %>%
+    arrange(desc(abs_coef)) %>%     # sort by importance
+    slice_head(n = 50)              # keep only top 15 bands
+})
+```
+
+```{r Select important bands 25}
+selected_bands25 <- enet_results25 %>%
+  filter(abs_coef != 0)
+
+```
+
+```{r}
+selected_bands_wl25 <- selected_bands25 %>%
+  mutate(
+    wavelength = round(band_to_wavelength(band_num),0)
+  )
+
+```
+
+```{r}
+ggplot(data = selected_bands_wl25,
+       aes(x = wavelength,
+           y = coefficient
+           )) +
+  geom_line() +
+  facet_wrap(~ variable, scales = "free_y") +
+  geom_hline(yintercept = 0) 
+  
+
+  
+```
+
+```{r}
+selec <- selected_bands_wl %>%
+  group_by(variable) %>%
+  arrange(desc(abs_coef), .by_group = TRUE)
+ 
+
+```
+
+```{r Elastic Net Selected Band Graph}
+library(ggplot2)
+library(dplyr)
+
+variable_labels <- c(
+  gs = "Stomata Cond. (mol m-2s-1)",
+  pn = "Net Photo (µmol m-2s-1)",
+  etr = "ETR (µmol m-2s-1)",
+  ca = "Chl.a (µg/cm-2)",
+  cb = "Chl.b (µg/cm-2)",
+  cx_c = "Car (µg/cm-2)"
+)
+
+elastic_net_p <- ggplot(selected_bands_wl, aes(x = wavelength, y = abs_coef, color = variable)) +
+  geom_segment(aes(x = wavelength, xend = wavelength, y = 0, yend = abs_coef),
+               linewidth = 0.6, alpha = 0.7) +
+  geom_point(size = 2) +
+  facet_wrap(~ variable, scales = "free_y", ncol = 2, labeller = labeller(variable = variable_labels)) +
+  labs(
+    title = element_blank(),
+    x = "Wavelength (nm)",
+    y = "Absolute Coefficient (Importance)"
+  ) +
+  theme_light() +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16),
+    strip.text = element_text(size = 12, face = "bold"),
+    legend.position = "none"
+  )
+
+elastic_net_p
+
+ggsave(elastic_net_p, 
+       filename = "../Output/enimp.png", 
+       dpi = 600,
+       height = 10,
+       width = 8)
+
+```
+
+```{r}
+selected_band_names <- selected_bands %>%
+  pull(band) %>%
+  unique()
+
+```
+
+```{r}
+df_corr <- clean_ponder %>%
+  select(all_of(selected_band_names), all_of(phys_vars))
+
+```
+
+```{r Convert bands → wavelengths}
+wavelengths <- seq(400, 1000, length.out = 300)
+
+selected_bands <- selected_bands %>%
+  mutate(wavelength = wavelengths[band_num])
+
+```
+
+```{r Summarize band importance across traits}
+stable_bands <- selected_bands %>%
+  group_by(band_num, wavelength) %>%
+  summarise(
+    n_traits = n_distinct(variable),
+    mean_abs_coef = mean(abs_coef),
+    .groups = "drop"
+  ) %>%
+  arrange(desc(n_traits), desc(mean_abs_coef))
+
+```
+
+```{r}
+phys_vars <- c("gs", "net_photo", "etr", "ca", "cb", "cx_c")
+
+# keep band_num + phys_vars
+df_corr <- clean_ponder %>%
+  select(stable_bands$band_num, all_of(phys_vars)) %>%
+  select(where(is.numeric))
+
+names(df_corr)
+
+```
+
+#5) Regressions
+
+```{r Setting up Dataframe to Use Only Desired Bands Selected by Elastic Net.}
+long_ponder <- clean_ponder %>%
+  pivot_longer(cols = contains("b_"),
+               values_to = "reflect",
+               names_to = "band")%>%
+  pivot_longer(cols = c("net_photo":"cx_c"), 
+               names_to = "variable")
+
+write_csv(long_ponder, file = "../Output/bands.csv")
+
+regression <- long_ponder %>% 
+  inner_join(selec, 
+            by = c("band", "variable"))
+
+write_csv(regression, file = "../Output/bands_filt.csv")
+
+```
+
+```{r Subset of Variables 74 DAP}
+
+ca74 <- regression %>%
+  filter(variable == "ca" & dap == 74) %>%
+  select(band:value, reflect) %>% 
+  pivot_wider(
+    names_from = band,
+    values_from = reflect,
+    values_fn = mean   # or median
+  ) %>%
+  rename(ca74 = value) %>%
+  select(-variable)
+
+cx_c74 <- regression %>%
+  filter(variable == "cx_c" & dap == 74) %>%
+  select(band:value, reflect) %>% 
+  pivot_wider(
+    names_from = band,
+    values_from = reflect,
+    values_fn = mean   # or median
+  ) %>%
+  rename(cx_c74 = value) %>%
+  select(-variable)
+
+cb74 <- regression %>%
+  filter(variable == "cb" & dap == 74) %>%
+  select(band:value, reflect) %>% 
+  pivot_wider(
+    names_from = band,
+    values_from = reflect,
+    values_fn = mean   # or median
+  ) %>%
+  rename(cb74 = value) %>%
+  select(-variable)
+
+etr74 <- regression %>%
+  filter(variable == "etr" & dap == 74) %>%
+  select(band:value, reflect) %>% 
+  pivot_wider(
+    names_from = band,
+    values_from = reflect,
+    values_fn = mean   # or median
+  ) %>%
+  rename(etr74 = value) %>%
+  select(-variable)
+
+
+gs74 <- regression %>%
+  filter(variable == "gs" & dap == 74) %>%
+  select(band:value, reflect) %>% 
+  pivot_wider(
+    names_from = band,
+    values_from = reflect,
+    values_fn = mean   # or median
+  ) %>%
+  rename(gs74 = value) %>%
+  select(-variable)
+
+
+net_photo74 <- regression %>%
+  filter(variable == "net_photo" & dap == 74) %>%
+  select(band:value, reflect) %>% 
+  pivot_wider(
+    names_from = band,
+    values_from = reflect,
+    values_fn = mean   # or median
+  ) %>%
+  rename(net_photo74 = value) %>%
+  select(-variable)
+
+```
+
+```{r Subset of Variables 81 DAP}
+
+
+ca81 <- regression %>%
+  filter(variable == "ca" & dap == 81) %>%
+  select(band:value, reflect) %>% 
+  pivot_wider(
+    names_from = band,
+    values_from = reflect,
+    values_fn = mean   # or median
+  ) %>%
+  rename(ca81 = value) %>%
+  select(-variable)
+
+cx_c81 <- regression %>%
+  filter(variable == "cx_c" & dap == 81) %>%
+  select(band:value, reflect) %>% 
+  pivot_wider(
+    names_from = band,
+    values_from = reflect,
+    values_fn = mean   # or median
+  ) %>%
+  rename(cx_c81 = value) %>%
+  select(-variable)
+
+cb81 <- regression %>%
+  filter(variable == "cb" & dap == 81) %>%
+  select(band:value, reflect) %>% 
+  pivot_wider(
+    names_from = band,
+    values_from = reflect,
+    values_fn = mean   # or median
+  ) %>%
+  rename(cb81 = value) %>%
+  select(-variable)
+
+etr81 <- regression %>%
+  filter(variable == "etr" & dap == 81) %>%
+  select(band:value, reflect) %>% 
+  pivot_wider(
+    names_from = band,
+    values_from = reflect,
+    values_fn = mean   # or median
+  ) %>%
+  rename(etr81 = value) %>%
+  select(-variable)
+
+
+gs81 <- regression %>%
+  filter(variable == "gs" & dap == 81) %>%
+  select(band:value, reflect) %>% 
+  pivot_wider(
+    names_from = band,
+    values_from = reflect,
+    values_fn = mean   # or median
+  ) %>%
+  rename(gs81 = value) %>%
+  select(-variable)
+
+
+net_photo81 <- regression %>%
+  filter(variable == "net_photo" & dap == 81) %>%
+  select(band:value, reflect) %>% 
+  pivot_wider(
+    names_from = band,
+    values_from = reflect,
+    values_fn = mean   # or median
+  ) %>%
+  rename(net_photo81 = value) %>%
+  select(-variable)
+
+```
+
+```{r Subset of Variables 109 DAP}
+
+
+ca109 <- regression %>%
+  filter(variable == "ca" & dap == 109) %>%
+  select(band:value, reflect) %>% 
+  pivot_wider(
+    names_from = band,
+    values_from = reflect,
+    values_fn = mean   # or median
+  ) %>%
+  rename(ca109 = value) %>%
+  select(-variable)
+
+cx_c109 <- regression %>%
+  filter(variable == "cx_c" & dap == 109) %>%
+  select(band:value, reflect) %>% 
+  pivot_wider(
+    names_from = band,
+    values_from = reflect,
+    values_fn = mean   # or median
+  ) %>%
+  rename(cx_c109 = value) %>%
+  select(-variable)
+
+cb109 <- regression %>%
+  filter(variable == "cb" & dap == 109) %>%
+  select(band:value, reflect) %>% 
+  pivot_wider(
+    names_from = band,
+    values_from = reflect,
+    values_fn = mean   # or median
+  ) %>%
+  rename(cb109 = value) %>%
+  select(-variable)
+
+etr109 <- regression %>%
+  filter(variable == "etr" & dap == 109) %>%
+  select(band:value, reflect) %>% 
+  pivot_wider(
+    names_from = band,
+    values_from = reflect,
+    values_fn = mean   # or median
+  ) %>%
+  rename(etr109 = value) %>%
+  select(-variable)
+
+
+gs109 <- regression %>%
+  filter(variable == "gs" & dap == 109) %>%
+  select(band:value, reflect) %>% 
+  pivot_wider(
+    names_from = band,
+    values_from = reflect,
+    values_fn = mean   # or median
+  ) %>%
+  rename(gs109 = value) %>%
+  select(-variable)
+
+
+net_photo109 <- regression %>%
+  filter(variable == "net_photo" & dap == 109) %>%
+  select(band:value, reflect) %>% 
+  pivot_wider(
+    names_from = band,
+    values_from = reflect,
+    values_fn = mean   # or median
+  ) %>%
+  rename(net_photo109 = value) %>%
+  select(-variable)
+
+```
+
+```{r Setting up Models, Hyperparameters, and Evaluation Metrics}
+
+# Evaluation function
+
+evaluate_model <- function(model, dataset, target_name, dataset_name) {
+  predicoes <- predict(model, dataset)
+  obs <- dataset[[target_name]]
+  data.frame(
+    Dataset = dataset_name,
+    MAE = mean(abs(predicoes - obs)),
+    MSE = mean((predicoes - obs)^2),
+    RMSE = sqrt(mean((predicoes - obs)^2)),
+    R2 = cor(predicoes, obs)^2
+  )
+}
+
+# Dataset names
+
+datasets <- list(
+  ca74 = ca74, ca81 = ca81, ca109 = ca109,
+  cb74 = cb74, cb81 = cb81, cb109 = cb109,
+  cx_c74 = cx_c74, cx_c81 = cx_c81, cx_c109 = cx_c109,
+  etr74 = etr74, etr81 = etr81, etr109 = etr109,
+  gs74 = gs74, gs81 = gs81, gs109 = gs109,
+  net_photo74 = net_photo74, net_photo81 = net_photo81, net_photo109 = net_photo109
+)
+
+# Controle de treinamento
+ctrl <- trainControl(method = "repeatedcv", number = 5, repeats = 5, search = "grid")
+
+# Grades de hiperparâmetros
+tune_grid_rf <- expand.grid(mtry = c(2, 3, 4, 5), splitrule = c("variance", "extratrees"), min.node.size = c(1, 5, 10))
+tune_grid_svm <- expand.grid(C = c(0.1, 1, 10, 100), sigma = c(0.001, 0.01, 0.1, 1))
+tune_grid_knn <- expand.grid(kmax = c(3, 5, 7, 9, 11), distance = c(1, 2), kernel = c("rectangular", "triangular", "epanechnikov"))
+tune_grid_xgbTree <- expand.grid(nrounds = c(500, 1000, 1500), max_depth = c(2, 4, 6), eta = c(0.01, 0.1, 0.3),
+                                 gamma = c(0, 0.1, 0.2), colsample_bytree = c(0.4, 0.6, 0.8, 1), min_child_weight = c(1, 3, 5), subsample = 1)
+```
+
+```{r Random Forest Regression Model}
+resultados_rf <- data.frame()
+
+for (nome_dataset in names(datasets)) {
+  
+  df <- datasets[[nome_dataset]] %>%
+    na.omit() %>%
+    mutate(across(starts_with("b_"), ~ suppressWarnings(as.numeric(as.character(.))))) %>%
+    select(where(~ !(all(is.na(.)) & is.numeric(.))))   # DROP BAD COLUMNS
+  
+  target <- names(df)[1]
+  
+  set.seed(123)
+  inTraining <- createDataPartition(df[[target]], p = 0.8, list = FALSE)
+  treino <- df[inTraining,]
+  teste <- df[-inTraining,]
+  
+  model_rf <- train(
+    formula(paste(target, "~ .")),
+    data = treino,
+    method = "ranger",
+    trControl = ctrl,
+    tuneGrid = tune_grid_rf,
+    importance = "impurity"
+  )
+  
+  metricas_treino <- evaluate_model(model_rf, treino, target, paste(nome_dataset, "- Treino"))
+  metricas_teste  <- evaluate_model(model_rf, teste,  target, paste(nome_dataset, "- Teste"))
+  
+  resultados_rf <- bind_rows(resultados_rf, metricas_treino, metricas_teste)
+}
+
+print(resultados_rf)
+
+
+```
+
+```{r Support Vector Machine Regression Model}
+
+resultados_svm <- data.frame()
+for (nome_dataset in names(datasets)) {
+  df <- datasets[[nome_dataset]] %>% na.omit()
+  target <- names(df)[1]
+  set.seed(123)
+  inTraining <- createDataPartition(df[[target]], p = 0.8, list = FALSE)
+  treino <- df[inTraining,]
+  teste <- df[-inTraining,]
+  model_svm <- train(
+    formula(paste(target, "~ .")),
+    data = treino,
+    method = "svmRadial",
+    preProcess = c("center", "scale"),
+    trControl = ctrl,
+    tuneGrid = tune_grid_svm
+  )
+  metricas_treino <- evaluate_model(model_svm, treino, target, paste(nome_dataset, "- Treino"))
+  metricas_teste <- evaluate_model(model_svm, teste, target, paste(nome_dataset, "- Teste"))
+  resultados_svm <- bind_rows(resultados_svm, metricas_treino, metricas_teste)
+}
+print(resultados_svm)
+```
+
+```{r K Nearest Neighbor Regression Model}
+
+resultados_knn <- data.frame()
+for (nome_dataset in names(datasets)) {
+  df <- datasets[[nome_dataset]] %>% na.omit()
+  target <- names(df)[1]
+  set.seed(123)
+  inTraining <- createDataPartition(df[[target]], p = 0.8, list = FALSE)
+  treino <- df[inTraining,]
+  teste <- df[-inTraining,]
+  model_knn <- train(
+    formula(paste(target, "~ .")),
+    data = treino,
+    method = "kknn",
+    preProcess = c("center", "scale"),
+    trControl = ctrl,
+    tuneGrid = tune_grid_knn
+  )
+  metricas_treino <- evaluate_model(model_knn, treino, target, paste(nome_dataset, "- Treino"))
+  metricas_teste <- evaluate_model(model_knn, teste, target, paste(nome_dataset, "- Teste"))
+  resultados_knn <- bind_rows(resultados_knn, metricas_treino, metricas_teste)
+}
+print(resultados_knn)
+```
+
+
+```{r XGBoost Regression Model}
+
+resultados_xgb <- data.frame()
+for (nome_dataset in names(datasets)) {
+  df <- datasets[[nome_dataset]] %>% na.omit()
+  target <- names(df)[1]
+  set.seed(123)
+  inTraining <- createDataPartition(df[[target]], p = 0.8, list = FALSE)
+  treino <- df[inTraining,]
+  teste <- df[-inTraining,]
+  model_xgb <- train(
+    formula(paste(target, "~ .")),
+    data = treino,
+    method = "xgbTree",
+    trControl = ctrl,
+    tuneGrid = tune_grid_xgbTree,
+    verbose = FALSE
+  )
+  metricas_treino <- evaluate_model(model_xgb, treino, target, paste(nome_dataset, "- Treino"))
+  metricas_teste <- evaluate_model(model_xgb, teste, target, paste(nome_dataset, "- Teste"))
+  resultados_xgb <- bind_rows(resultados_xgb, metricas_treino, metricas_teste)
+}
+print(resultados_xgb)
+```
+
+```{r Wrap-up And Exporting Results}
+# Adicionar uma coluna indicando o modelo correspondente
+resultados_rf$modelo <- "Random Forest"
+resultados_svm$modelo <- "SVM Radial"
+resultados_knn$modelo <- "kNN"
+#resultados_xgb$modelo <- "XGBoost "
+
+# Juntar todas as tabelas em um único dataframe
+resultados_finais <- bind_rows(
+  resultados_rf,
+  resultados_svm,
+  resultados_knn,
+  #resultados_xgb
+)
+
+# Exibir a tabela final consolidada
+print(resultados_finais)
+
+# Se quiser salvar em CSV:
+write.csv(resultados_finais, "../Output/resultados.csv", row.names = FALSE)
+```
+
+
