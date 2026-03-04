@@ -813,15 +813,14 @@ MCARI - [(R7002R670)20.2(R7002R550)·(R700/R670) (https://ntrs.nasa.gov/api/cita
 ```{r Define response variables for 24}
 phys_vars <- c("gs", "pn","etr","ca","cb","cx_c")
 
-clean_ponder_na24 <- clean_ponder %>%
+clean_ponder_na <- clean_ponder %>%
   drop_na()
   
-X24 <- clean_ponder_na %>%
-  filter(year == 2024) %>%
+X <- clean_ponder_na %>%
   select(starts_with("b_")) %>%
   as.matrix()
 
-X24 <- scale(X)
+X <- scale(X)
 ```
 
 ```{r Run Elastic Net (α = 0.5) for each trait}
@@ -859,33 +858,33 @@ enet_results <- map_df(phys_vars, function(var) {
 
 
 ```{r Elastic Net Feature Selection}
-enet_results <- map_df(phys_vars, function(var) {
-  
-  y <- clean_ponder_na24[[var]]
-  
-  cv_enet <- cv.glmnet(
-    x = X24,
-    y = y,
-    alpha = 0.6,          # Elastic Net
-    standardize = TRUE,
-    nfolds = 20
-  )
-  
-  coef_mat <- coef(cv_enet, s = "lambda.min")
-  
-  tibble(
-    band = rownames(coef_mat),
-    coefficient = as.numeric(coef_mat),
-    variable = var
-  ) %>%
-    filter(band != "(Intercept)") %>%
-    mutate(
-      abs_coef = abs(coefficient),
-      band_num = as.numeric(str_remove(band, "b_"))
-    ) %>%
-    arrange(desc(abs_coef)) %>%     # sort by importance
-    slice_head(n = 50)              # keep only top 15 bands
-})
+# enet_results <- map_df(phys_vars, function(var) {
+#   
+#   y <- clean_ponder_na24[[var]]
+#   
+#   cv_enet <- cv.glmnet(
+#     x = X24,
+#     y = y,
+#     alpha = 0.6,          # Elastic Net
+#     standardize = TRUE,
+#     nfolds = 20
+#   )
+#   
+#   coef_mat <- coef(cv_enet, s = "lambda.min")
+#   
+#   tibble(
+#     band = rownames(coef_mat),
+#     coefficient = as.numeric(coef_mat),
+#     variable = var
+#   ) %>%
+#     filter(band != "(Intercept)") %>%
+#     mutate(
+#       abs_coef = abs(coefficient),
+#       band_num = as.numeric(str_remove(band, "b_"))
+#     ) %>%
+#     arrange(desc(abs_coef)) %>%     # sort by importance
+#     slice_head(n = 50)              # keep only top 15 bands
+# })
 
 ```
 
@@ -916,12 +915,20 @@ selected_bands_wl <- selected_bands %>%
 
 ```{r}
 ggplot(data = selected_bands_wl,
-       aes(x = wavelength,
+       aes(x = as.factor(wavelength),
            y = coefficient
            )) +
-  geom_line() +
+  geom_col(width = 2) +
+  geom_hline(yintercept = 0) +
+  geom_vline(xintercept = 450, color= "blue") +
+  geom_vline(xintercept = 550, color = "green") +
+  geom_vline(xintercept = 660, color = "red") +
+  geom_line(aes(group = 1)) +
   facet_wrap(~ variable, scales = "free_y") +
-  geom_hline(yintercept = 0) 
+  
+  labs(title = element_text("Importance Distribution Across Spectrum"),
+       x = element_text("Wavelength (nm)"),
+       y = element_text("Coefficient Value"))
   
 
   
@@ -932,12 +939,12 @@ phys_vars <- c("gs", "pn","etr","ca","cb","cx_c")
 clean_ponder_na25 <- clean_ponder %>%
   drop_na()
   
-X25 <- clean_ponder_na25 %>%
+X <- clean_ponder_na25 %>%
   filter(year == 2025) %>%
   select(starts_with("b_")) %>%
   as.matrix()
 
-X25 <- scale(X)
+X <- scale(X)
 ```
 
 ```{r Elastic Net 2025}
@@ -946,7 +953,7 @@ enet_results25 <- map_df(phys_vars, function(var) {
   y <- clean_ponder_na25[[var]]
   
   cv_enet <- cv.glmnet(
-    x = X25,
+    x = X,
     y = y,
     alpha = 0.6,          # Elastic Net
     standardize = TRUE,
