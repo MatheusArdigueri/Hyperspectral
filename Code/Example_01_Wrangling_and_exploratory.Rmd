@@ -855,47 +855,13 @@ enet_results <- map_df(phys_vars, function(var) {
 ```
 
 
-
-
-```{r Elastic Net Feature Selection}
-# enet_results <- map_df(phys_vars, function(var) {
-#   
-#   y <- clean_ponder_na24[[var]]
-#   
-#   cv_enet <- cv.glmnet(
-#     x = X24,
-#     y = y,
-#     alpha = 0.6,          # Elastic Net
-#     standardize = TRUE,
-#     nfolds = 20
-#   )
-#   
-#   coef_mat <- coef(cv_enet, s = "lambda.min")
-#   
-#   tibble(
-#     band = rownames(coef_mat),
-#     coefficient = as.numeric(coef_mat),
-#     variable = var
-#   ) %>%
-#     filter(band != "(Intercept)") %>%
-#     mutate(
-#       abs_coef = abs(coefficient),
-#       band_num = as.numeric(str_remove(band, "b_"))
-#     ) %>%
-#     arrange(desc(abs_coef)) %>%     # sort by importance
-#     slice_head(n = 50)              # keep only top 15 bands
-# })
-
-```
-
-
 ```{r Select important bands}
 selected_bands <- enet_results %>%
   filter(abs_coef != 0)
 
 ```
 
-```{r}
+```{r Converting Wavelength}
 band_to_wavelength <- function(band_num,
                                wl_min = 400,
                                wl_max = 1000,
@@ -904,14 +870,149 @@ band_to_wavelength <- function(band_num,
 }
 ```
 
-```{r}
+```{r Selecting >0 important bands and assigning regions}
 selected_bands_wl <- selected_bands %>%
   mutate(
     wavelength = round(band_to_wavelength(band_num),0)
-  )
-
+  ) %>%
+  mutate(
+    region = case_when(
+      wavelength >= 400 & wavelength <  520 ~ "Blue",
+      wavelength >= 520 & wavelength <  630 ~ "Green",
+      wavelength >= 630 & wavelength <  680 ~ "Red",
+      wavelength >= 680 & wavelength <  750 ~ "RedEdge",
+      wavelength >= 750 & wavelength <= 1000 ~ "NIR"
+      
+    )
+  ) 
 ```
 
+```{r}
+names(selected_bands_wl)
+```
+
+
+```{r Calculating Vegetation indices}
+ponder_long <- ponder %>%
+  pivot_longer(
+    cols = starts_with("b_"),
+    names_to = "band",
+    values_to = "reflectance"
+  ) %>%
+  pivot_longer(cols = ca:etr,
+                names_to = "variable",
+                values_to = "var_val")
+
+selected_reflectance <- ponder_long %>%
+  left_join(selected_bands_wl, by = "band")
+```
+
+```{r}
+sel_ref2 <- selected_reflectance %>%
+  mutate(
+    phys_value = case_when(
+      variable == "pn"   ~ pn,
+      variable == "gs"   ~ gs,
+      variable == "etr"  ~ etr,
+      variable == "ca"   ~ ca,
+      variable == "cb"   ~ cb,
+      variable == "cx_c" ~ cx_c
+    )
+  )
+```
+
+```{r Heatmap Spearman correlation}
+library(dplyr)
+library(ggplot2)
+
+# reorder-within-facet trick (no extra packages)
+ggplot(spearman_facet, aes(x = x_in_facet, y = 1, fill = rho)) +
+  geom_tile() +
+  geom_text(aes(label = sprintf("%.2f", rho)), size = 3) +
+  facet_wrap(~variable, scales = "free_x", ncol = 1) +
+  scale_fill_viridis_c(
+    option = "plasma",
+    name = "Spearman ρ",
+    limits = c(-1, 1)
+  ) +
+  scale_x_discrete(labels = function(x) sub(".*___", "", x)) +
+  labs(x = "Selected bands", y = NULL) +
+  theme_minimal() +
+  theme(
+    strip.text = element_text(face = "bold"),
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    panel.grid = element_blank(),
+    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)
+  )
+```
+```{r}
+topK <- 10
+
+sel_top <- selected_bands_wl %>%
+  group_by(variable) %>%
+  slice_max(abs_coef, n = topK, with_ties = FALSE) %>%
+  ungroup() %>%
+  select(variable, band, wavelength) %>%
+  distinct()
+
+spearman_sel_top <- ponder_long %>%
+  inner_join(sel_top, by = "band") %>%
+  mutate(
+    phys_value = case_when(
+      variable == "pn"   ~ pn,
+      variable == "gs"   ~ gs,
+      variable == "etr"  ~ etr,
+      variable == "ca"   ~ ca,
+      variable == "cb"   ~ cb,
+      variable == "cx_c" ~ cx_c,
+      TRUE ~ NA_real_
+    )
+  ) %>%
+  filter(!is.na(phys_value)) %>%
+  group_by(variable, band, wavelength) %>%
+  summarise(
+    rho = cor(reflectance, phys_value, method = "spearman", use = "complete.obs"),
+    .groups = "drop"
+  )
+
+library(forcats)
+
+spearman_sel_top2 <- spearman_sel_top %>%
+  mutate(
+    xlab = paste0(round(wavelength), " nm"),
+    xlab = fct_reorder(xlab, wavelength)   # order left→right by wavelength
+  )
+
+ggplot(spearman_sel_top2, aes(x = xlab, y = variable, fill = rho)) +
+  geom_tile() +
+  labs(x = "Selected bands", y = NULL, fill = "Spearman ρ") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+```
+
+```{r}
+phys_vars <- c("pn","gs","etr","ca","cb","cx_c")
+
+spearman_all <- ponder_long %>%
+  pivot_longer(
+    cols = all_of(phys_vars),
+    names_to = "variable",
+    values_to = "phys_value"
+  ) %>%
+  group_by(variable, band_num, wavelength) %>%
+  summarise(
+    rho = cor(reflectance, phys_value, method = "spearman", use = "complete.obs"),
+    .groups = "drop"
+  )
+```
+
+```{r}
+ggplot(spearman_all, aes(x = wavelength, y = variable, fill = rho)) +
+  geom_tile() +
+  labs(x = "Wavelength (nm)", y = NULL, fill = "Spearman ρ") +
+  theme_minimal()
+```
 
 ```{r}
 ggplot(data = selected_bands_wl,
