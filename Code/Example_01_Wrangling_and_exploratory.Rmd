@@ -53,6 +53,24 @@ clean_ponder
 
 ```
 
+```{r}
+ponder_long <- clean_ponder %>%
+  mutate(across(all_of(phys_vars), as.numeric)) %>%
+  mutate(dap = as.factor(dap)) %>%
+  pivot_longer(
+    cols = all_of(phys_vars),
+    names_to = "variable",
+    values_to = "value"
+  ) %>%
+  pivot_longer(
+    cols = starts_with("b_"),
+    names_to = "band",
+    values_to = "reflectance"
+  )
+```
+
+
+
 # 2) Data view 
 # 2.1) Boxplots
 
@@ -887,19 +905,21 @@ selected_bands_wl <- selected_bands %>%
   ) 
 ```
 
+
 ```{r}
 select_bcw <- selected_bands_wl %>%
   pivot_wider(names_from = band,
               values_from = coefficient)
 ```
+
+
 ```{r Getting Bands from EN}
-
-gs_bands_chr <- paste0("b_", gs_bands)
-
 
 gs_bands <- selected_bands_wl %>%
   filter(variable == "gs") %>%
   pull(band_num)
+
+gs_bands_chr <- paste0("b_", gs_bands)
 
 pn_bands <- selected_bands_wl %>%
   filter(variable == "pn") %>%
@@ -937,7 +957,7 @@ ponder_gs <- ponder_long %>%
   filter(variable == "gs",
          band %in% gs_bands_chr)%>%
   pivot_wider(names_from = variable,
-              values_from = var_val) %>%
+              values_from = value) %>%
   pivot_wider(names_from = band,
               values_from = reflectance)
 
@@ -945,7 +965,7 @@ ponder_pn <- ponder_long %>%
   filter(variable == "pn",
          band %in% pn_bands_chr)%>%
   pivot_wider(names_from = variable,
-              values_from = var_val) %>%
+              values_from = value) %>%
   pivot_wider(names_from = band,
               values_from = reflectance)
 
@@ -953,7 +973,7 @@ ponder_etr <- ponder_long %>%
   filter(variable == "etr",
          band %in% etr_bands_chr)%>%
   pivot_wider(names_from = variable,
-              values_from = var_val) %>%
+              values_from = value) %>%
   pivot_wider(names_from = band,
               values_from = reflectance)
 
@@ -961,7 +981,7 @@ ponder_ca <- ponder_long %>%
   filter(variable == "ca",
          band %in% ca_bands_chr)%>%
   pivot_wider(names_from = variable,
-              values_from = var_val) %>%
+              values_from = value) %>%
   pivot_wider(names_from = band,
               values_from = reflectance)
 
@@ -969,7 +989,7 @@ ponder_cb <- ponder_long %>%
   filter(variable == "cb",
          band %in% cb_bands_chr)%>%
   pivot_wider(names_from = variable,
-              values_from = var_val) %>%
+              values_from = value) %>%
   pivot_wider(names_from = band,
               values_from = reflectance)
 
@@ -977,7 +997,7 @@ ponder_cx_c <- ponder_long %>%
   filter(variable == "cx_c",
          band %in% cx_c_bands_chr)%>%
   pivot_wider(names_from = variable,
-              values_from = var_val) %>%
+              values_from = value) %>%
   pivot_wider(names_from = band,
               values_from = reflectance)
 ```
@@ -994,35 +1014,35 @@ nir     <- intersect(c("b_232","b_234","b_242","b_253","b_258","b_259","b_264",
 ponder_gs <- ponder_gs %>%
   mutate(
 
-    # NDVI variants (canopy vigor / greenness proxies)
-    ndvi_gs1 = (b_232 - b_118) / (b_232 + b_118),
-    ndvi_gs2 = (b_285 - b_127) / (b_285 + b_127),
+    # NDVI variants
+    ndvi_gs1 = (b_232 - b_113) / (b_232 + b_113),
+    ndvi_gs2 = (b_285 - b_118) / (b_285 + b_118),
 
-    # NDRE variants (red-edge sensitivity; often tracks physiology better than NDVI)
+    # NDRE variants
     ndre_gs1 = (b_232 - b_162) / (b_232 + b_162),
     ndre_gs2 = (b_285 - b_164) / (b_285 + b_164),
 
-    # CIgreen-like (NIR/Green - 1)
+    # CIgreen-like
     ci_green_gs1 = (b_232 / b_76) - 1,
     ci_green_gs2 = (b_285 / b_70) - 1,
 
-    # CIred-edge-like (NIR/RedEdge - 1)
+    # CIred-edge-like
     ci_re_gs1 = (b_232 / b_162) - 1,
     ci_re_gs2 = (b_285 / b_164) - 1,
 
-    # Simple Ratios
-    sr_gs1 = b_232 / b_118,
-    sr_gs2 = b_285 / b_127,
+    # Simple ratios
+    sr_gs1 = b_232 / b_113,
+    sr_gs2 = b_285 / b_118,
 
     # NIR / RedEdge ratios
     srre_gs1 = b_232 / b_162,
     srre_gs2 = b_285 / b_164,
 
-    # Blue–Green pigment proxy (stress / pigment balance-ish)
+    # Blue–Green proxy
     nd_blue_green_gs1 = (b_76 - b_23) / (b_76 + b_23),
     nd_blue_green_gs2 = (b_70 - b_19) / (b_70 + b_19),
 
-    # Red-edge slope proxy (edge “strength”)
+    # Red-edge slope proxy
     re_slope_gs1 = (b_164 - b_162) / (b_164 + b_162)
 
   )
@@ -1031,13 +1051,13 @@ ponder_gs <- ponder_gs %>%
 
 ```{r Heat gs indices}
 index_cols_gs <- c(
-  "ndvi_gs1","ndvi_gs2",
-  "ndre_gs1","ndre_gs2",
-  "ci_green_gs1","ci_green_gs2",
-  "ci_re_gs1","ci_re_gs2",
-  "sr_gs1","sr_gs2",
-  "srre_gs1","srre_gs2",
-  "nd_blue_green_gs1","nd_blue_green_gs2",
+  "ndvi_gs1", "ndvi_gs2",
+  "ndre_gs1", "ndre_gs2",
+  "ci_green_gs1", "ci_green_gs2",
+  "ci_re_gs1", "ci_re_gs2",
+  "sr_gs1", "sr_gs2",
+  "srre_gs1", "srre_gs2",
+  "nd_blue_green_gs1", "nd_blue_green_gs2",
   "re_slope_gs1"
 )
 
@@ -1067,52 +1087,48 @@ gs_heat <- ggplot(spearman_idx_gs, aes(x = index, y = "gs", fill = rho)) +
 ponder_ca <- ponder_ca %>%
   mutate(
 
-  # NDVI variants (chlorophyll / canopy vigor)
-  ndvi_ca1 = (b_252 - b_123) / (b_252 + b_123),
-  ndvi_ca2 = (b_271 - b_139) / (b_271 + b_139),
+    # NDVI variants
+    ndvi_ca1 = (b_253 - b_123) / (b_253 + b_123),
+    ndvi_ca2 = (b_271 - b_123) / (b_271 + b_123),
 
-  # NDRE variants (chlorophyll content, nitrogen status)
-  ndre_ca1 = (b_252 - b_151) / (b_252 + b_151),
-  ndre_ca2 = (b_271 - b_155) / (b_271 + b_155),
-  ndre_ca3 = (b_280 - b_156) / (b_280 + b_156),
+    # NDRE variants
+    ndre_ca1 = (b_253 - b_151) / (b_253 + b_151),
+    ndre_ca2 = (b_271 - b_156) / (b_271 + b_156),
+    ndre_ca3 = (b_280 - b_174) / (b_280 + b_174),
 
-  # Chlorophyll Index Green (approximate version)
-  ci_green1 = (b_252 / b_92) - 1,
-  ci_green2 = (b_271 / b_92) - 1,
+    # Simple ratio chlorophyll-like
+    sr_ca1 = b_253 / b_123,
+    sr_ca2 = b_271 / b_123,
 
-  # Chlorophyll Index Red Edge
-  ci_re1 = (b_252 / b_155) - 1,
-  ci_re2 = (b_271 / b_155) - 1,
+    # CIred-edge-like
+    ci_re_ca1 = (b_253 / b_151) - 1,
+    ci_re_ca2 = (b_271 / b_156) - 1,
 
-  # Simple Ratio indices (often correlate with chlorophyll)
-  sr_ca1 = b_252 / b_123,
-  sr_ca2 = b_271 / b_139,
+    # Red-edge slope proxies
+    re_slope_ca1 = (b_174 - b_146) / (b_174 + b_146),
+    re_slope_ca2 = (b_174 - b_151) / (b_174 + b_151),
 
-  # Blue-Red chlorophyll absorption ratio
-  br_chl1 = b_34 / b_123,
-  br_chl2 = b_48 / b_139,
-
-  # Red-Edge position proxy
-  rep_proxy = (b_174 - b_151) / (b_174 + b_151)
+    # NIR contrast proxies
+    nir_contrast_ca1 = (b_300 - b_174) / (b_300 + b_174),
+    nir_contrast_ca2 = (b_295 - b_156) / (b_295 + b_156)
 
   )
 
 ```
 
 ```{r Heat ca indices}
-index_cols <- c(
-"ndvi_ca1","ndvi_ca2",
-"ndre_ca1","ndre_ca2","ndre_ca3",
-"ci_green1","ci_green2",
-"ci_re1","ci_re2",
-"sr_ca1","sr_ca2",
-"br_chl1","br_chl2",
-"rep_proxy"
+index_cols_ca <- c(
+  "ndvi_ca1", "ndvi_ca2",
+  "ndre_ca1", "ndre_ca2", "ndre_ca3",
+  "sr_ca1", "sr_ca2",
+  "ci_re_ca1", "ci_re_ca2",
+  "re_slope_ca1", "re_slope_ca2",
+  "nir_contrast_ca1", "nir_contrast_ca2"
 )
 
 spearman_idx <- ponder_ca %>%
   summarise(across(
-    all_of(index_cols),
+    all_of(index_cols_ca),
     ~cor(.x, ca, method = "spearman", use = "complete.obs")
   )) %>%
   pivot_longer(everything(),
@@ -1139,56 +1155,47 @@ ggsave(filename = "../Output/heat_ca_spearm.png",
 ponder_pn <- ponder_pn %>%
   mutate(
 
-    # --- NDVI family (NIR vs Red) ---
+    # NDVI variants
     ndvi_pn1 = (b_253 - b_136) / (b_253 + b_136),
     ndvi_pn2 = (b_281 - b_138) / (b_281 + b_138),
-    ndvi_pn3 = (b_242 - b_136) / (b_242 + b_136),
 
-    # --- NDRE family (NIR vs RedEdge) ---
+    # NDRE variants
     ndre_pn1 = (b_253 - b_164) / (b_253 + b_164),
     ndre_pn2 = (b_281 - b_162) / (b_281 + b_162),
     ndre_pn3 = (b_242 - b_172) / (b_242 + b_172),
 
-    # --- CIgreen-like (NIR / Green - 1) ---
-    ci_green_pn1 = (b_253 / b_74) - 1,   # 906 / 546
-    ci_green_pn2 = (b_242 / b_70) - 1,   # 884 / 538
+    # CIgreen-like
+    ci_green_pn1 = (b_253 / b_74) - 1,
+    ci_green_pn2 = (b_242 / b_70) - 1,
 
-    # --- CIred-edge-like (NIR / RedEdge - 1) ---
-    ci_re_pn1 = (b_253 / b_164) - 1,     # 906 / 727
-    ci_re_pn2 = (b_281 / b_162) - 1,     # 962 / 723
+    # CIred-edge-like
+    ci_re_pn1 = (b_253 / b_164) - 1,
+    ci_re_pn2 = (b_281 / b_162) - 1,
 
-    # --- Simple Ratio families (often correlate with productivity) ---
+    # Simple ratios
     sr_nir_red_pn1 = b_253 / b_136,
     sr_nir_re_pn1  = b_253 / b_164,
 
-    # --- Blue/Green pigment proxies (photosynthesis is pigment-driven) ---
-    nd_blue_green1 = (b_74 - b_22) / (b_74 + b_22),   # 546 vs 442
-    nd_blue_green2 = (b_70 - b_16) / (b_70 + b_16),   # 538 vs 430
+    # Blue–Green proxies
+    nd_blue_green_pn1 = (b_74 - b_22) / (b_74 + b_22),
+    nd_blue_green_pn2 = (b_70 - b_16) / (b_70 + b_16),
 
-    # --- Red-edge slope / “edge strength” proxies ---
-    re_slope_pn1 = (b_174 - b_149) / (b_174 + b_149), # 747 vs 697
-    re_slope_pn2 = (b_173 - b_162) / (b_173 + b_162)  # 745 vs 723
+    # Red-edge slope proxies
+    re_slope_pn1 = (b_174 - b_149) / (b_174 + b_149),
+    re_slope_pn2 = (b_173 - b_162) / (b_173 + b_162)
+
   )
 ```
 
 ```{r Heat spear pn}
 index_cols_pn <- c(
-  "ndvi_pn1",
-  "ndvi_pn2",
-  "ndvi_pn3",
-  "ndre_pn1",
-  "ndre_pn2",
-  "ndre_pn3",
-  "ci_green_pn1",
-  "ci_green_pn2",
-  "ci_re_pn1",
-  "ci_re_pn2",
-  "sr_nir_red_pn1",
-  "sr_nir_re_pn1",
-  "nd_blue_green1",
-  "nd_blue_green2",
-  "re_slope_pn1",
-  "re_slope_pn2"
+  "ndvi_pn1", "ndvi_pn2",
+  "ndre_pn1", "ndre_pn2", "ndre_pn3",
+  "ci_green_pn1", "ci_green_pn2",
+  "ci_re_pn1", "ci_re_pn2",
+  "sr_nir_red_pn1", "sr_nir_re_pn1",
+  "nd_blue_green_pn1", "nd_blue_green_pn2",
+  "re_slope_pn1", "re_slope_pn2"
 )
 
 spearman_idx <- ponder_pn %>%
@@ -1213,59 +1220,50 @@ pn_heat <- ggplot(spearman_idx, aes(x = index, y = "gs", fill = rho)) +
 
 ```{r Calculating Veg indices for ETR}
 ponder_etr <- ponder_etr %>%
-  mutate(
+   mutate(
 
-  # NDVI family (NIR vs Red)
-  ndvi_etr1 = (b_253 - b_113)/(b_253 + b_113),
-  ndvi_etr2 = (b_281 - b_113)/(b_281 + b_113),
-  ndvi_etr3 = (b_238 - b_113)/(b_238 + b_113),
+    # NDVI variants
+    ndvi_etr1 = (b_253 - b_113) / (b_253 + b_113),
+    ndvi_etr2 = (b_281 - b_113) / (b_281 + b_113),
+    ndvi_etr3 = (b_238 - b_113) / (b_238 + b_113),
 
-  # NDRE family (NIR vs RedEdge)
-  ndre_etr1 = (b_253 - b_164)/(b_253 + b_164),
-  ndre_etr2 = (b_238 - b_162)/(b_238 + b_162),
-  ndre_etr3 = (b_281 - b_173)/(b_281 + b_173),
+    # NDRE variants
+    ndre_etr1 = (b_253 - b_164) / (b_253 + b_164),
+    ndre_etr2 = (b_238 - b_162) / (b_238 + b_162),
+    ndre_etr3 = (b_281 - b_173) / (b_281 + b_173),
 
-  # CIgreen-like
-  ci_green_etr1 = (b_253/b_74) - 1,
-  ci_green_etr2 = (b_238/b_74) - 1,
+    # CIgreen-like
+    ci_green_etr1 = (b_253 / b_74) - 1,
+    ci_green_etr2 = (b_238 / b_74) - 1,
 
-  # CIred-edge-like
-  ci_re_etr1 = (b_253/b_164) - 1,
-  ci_re_etr2 = (b_281/b_162) - 1,
+    # CIred-edge-like
+    ci_re_etr1 = (b_253 / b_164) - 1,
+    ci_re_etr2 = (b_281 / b_162) - 1,
 
-  # Simple ratios
-  sr_nir_red_etr1 = b_253/b_113,
-  sr_nir_re_etr1  = b_253/b_164,
+    # Simple ratios
+    sr_nir_red_etr1 = b_253 / b_113,
+    sr_nir_re_etr1  = b_253 / b_164,
 
-  # Blue-green pigment proxies
-  nd_blue_green_etr1 = (b_74 - b_6)/(b_74 + b_6),
-  nd_blue_green_etr2 = (b_74 - b_42)/(b_74 + b_42),
+    # Blue–Green proxies
+    nd_blue_green_etr1 = (b_74 - b_6) / (b_74 + b_6),
+    nd_blue_green_etr2 = (b_74 - b_42) / (b_74 + b_42),
 
-  # Red-edge slope proxies
-  re_slope_etr1 = (b_174 - b_145)/(b_174 + b_145),
-  re_slope_etr2 = (b_173 - b_162)/(b_173 + b_162)
+    # Red-edge slope proxies
+    re_slope_etr1 = (b_174 - b_145) / (b_174 + b_145),
+    re_slope_etr2 = (b_173 - b_162) / (b_173 + b_162)
 
   )
 ```
 
 ```{r Heat spear etr}
 index_cols_etr <- c(
-  "ndvi_etr1",
-  "ndvi_etr2",
-  "ndvi_etr3",
-  "ndre_etr1",
-  "ndre_etr2",
-  "ndre_etr3",
-  "ci_green_etr1",
-  "ci_green_etr2",
-  "ci_re_etr1",
-  "ci_re_etr2",
-  "sr_nir_red_etr1",
-  "sr_nir_re_etr1",
-  "nd_blue_green_etr1",
-  "nd_blue_green_etr2",
-  "re_slope_etr1",
-  "re_slope_etr2"
+  "ndvi_etr1", "ndvi_etr2", "ndvi_etr3",
+  "ndre_etr1", "ndre_etr2", "ndre_etr3",
+  "ci_green_etr1", "ci_green_etr2",
+  "ci_re_etr1", "ci_re_etr2",
+  "sr_nir_red_etr1", "sr_nir_re_etr1",
+  "nd_blue_green_etr1", "nd_blue_green_etr2",
+  "re_slope_etr1", "re_slope_etr2"
 )
 
 spearman_idx <- ponder_etr %>%
@@ -1288,65 +1286,85 @@ etr_heat <- ggplot(spearman_idx, aes(x = index, y = "gs", fill = rho)) +
     panel.grid = element_blank())
 
 ```
+
+
 ```{r Calculating Veg indices for Chl B}
 ponder_cb <- ponder_cb %>%
   mutate(
 
-    # NDVI family (NIR vs Red)
+    # NDVI variants
     ndvi_cb1 = (b_252 - b_123) / (b_252 + b_123),
     ndvi_cb2 = (b_271 - b_123) / (b_271 + b_123),
 
-    # NDRE family (NIR vs RedEdge)
+    # NDRE variants
     ndre_cb1 = (b_252 - b_155) / (b_252 + b_155),
     ndre_cb2 = (b_271 - b_157) / (b_271 + b_157),
     ndre_cb3 = (b_280 - b_161) / (b_280 + b_161),
-
-    # CIgreen-like (NIR / Green - 1)  [you only have one green band ~540]
+    ndre_cb4 = (b_161 - b_155) / (b_161 + b_155),
+    ndre_cb5 = (b_159 - b_155) / (b_159 + b_155),
+    # CIgreen-like
     ci_green_cb1 = (b_252 / b_71) - 1,
     ci_green_cb2 = (b_271 / b_71) - 1,
 
-    # CIred-edge-like (NIR / RedEdge - 1)
+    # CIred-edge-like
     ci_re_cb1 = (b_252 / b_155) - 1,
     ci_re_cb2 = (b_271 / b_155) - 1,
 
-    # Simple ratios (often correlate with chlorophyll)
+    # Simple ratios
     sr_nir_red_cb1 = b_252 / b_123,
     sr_nir_re_cb1  = b_252 / b_155,
 
-    # Blue/Red absorption ratios (pigment proxies)
+    # Blue/Red proxies
     br_cb1 = b_34 / b_123,
     br_cb2 = b_54 / b_123,
 
-    # Blue/Green pigment proxy
-    nd_blue_green_cb1 = (b_71 - b_18) / (b_71 + b_18),
-    nd_blue_green_cb2 = (b_71 - b_54) / (b_71 + b_54),
+    # Blue/Green proxies
+    b_g_NDVIcb1 = (b_71 - b_17) / (b_71 + b_17),
+    b_g_NDVIcb2 = (b_71 - b_54) / (b_71 + b_54)
 
-    # Red-edge slope / strength proxies (using available RE bands)
-    re_slope_cb1 = (b_161 - b_155) / (b_161 + b_155),
-    re_slope_cb2 = (b_159 - b_155) / (b_159 + b_155)
+    # Red-edge slope proxies
+    
 
   )
+
+
+index_labels_cb <- c(
+  ndvi_cb1 = "NDVI (NIR₁–Red₁)",
+  ndvi_cb2 = "NDVI (NIR₂–Red₂)",
+  
+  ndre_cb1 = "NDRE (NIR₁–RE₁)",
+  ndre_cb2 = "NDRE (NIR₂–RE₂)",
+  ndre_cb3 = "NDRE (NIR₃–RE₃)",
+  ndre_cb4 = "NDRE (Alt 1)",
+  ndre_cb5 = "NDRE (Alt 2)",
+  
+  ci_green_cb1 = "CIgreen (NIR₁/Green)",
+  ci_green_cb2 = "CIgreen (NIR₂/Green)",
+  
+  ci_re_cb1 = "CIred-edge (NIR₁/RE)",
+  ci_re_cb2 = "CIred-edge (NIR₂/RE)",
+  
+  sr_nir_red_cb1 = "SR (NIR/Red)",
+  sr_nir_re_cb1 = "SR (NIR/RE)",
+  
+  br_cb1 = "Blue/Red ratio 1",
+  br_cb2 = "Blue/Red ratio 2",
+  
+  b_g_NDVIcb1 = "NDVI (Green–Blue) 1",
+  b_g_NDVIcb2 = "NDVI (Green–Blue) 2"
+)
 ```
 
 ```{r Heat spear Chl B}
 index_cols_cb <- c(
-  "ndvi_cb1",
-  "ndvi_cb2",
-  "ndre_cb1",
-  "ndre_cb2",
-  "ndre_cb3",
-  "ci_green_cb1",
-  "ci_green_cb2",
-  "ci_re_cb1",
-  "ci_re_cb2",
-  "sr_nir_red_cb1",
-  "sr_nir_re_cb1",
-  "br_cb1",
-  "br_cb2",
-  "nd_blue_green_cb1",
-  "nd_blue_green_cb2",
-  "re_slope_cb1",
-  "re_slope_cb2"
+  "ndvi_cb1", "ndvi_cb2",
+  "ndre_cb1", "ndre_cb2", "ndre_cb3",
+  "ci_green_cb1", "ci_green_cb2",
+  "ci_re_cb1", "ci_re_cb2",
+  "sr_nir_red_cb1", "sr_nir_re_cb1",
+  "br_cb1", "br_cb2",
+  "b_g_NDVIcb1", "b_g_NDVIcb2",
+  "ndre_cb4", "ndre_cb5"
 )
 
 spearman_idx_cb <- ponder_cb %>%
@@ -1369,37 +1387,38 @@ cb_heat <- ggplot(spearman_idx_cb, aes(x = index, y = "gs", fill = rho)) +
     panel.grid = element_blank())
 
 ```
+
+
 ```{r Veg Indices for Cx_C}
 ponder_cx_c <- ponder_cx_c %>%
   mutate(
 
-    # --- NDVI / chlorophyll–structure baseline ---
+    # NDVI variants
     ndvi_cx1 = (b_271 - b_123) / (b_271 + b_123),
     ndvi_cx2 = (b_281 - b_139) / (b_281 + b_139),
 
-    # --- NDRE (pigment / red-edge sensitivity) ---
-    ndre_cx1 = (b_271 - b_155) / (b_271 + b_155),
+    # NDRE variants
+    ndre_cx1 = (b_271 - b_151) / (b_271 + b_151),
     ndre_cx2 = (b_281 - b_156) / (b_281 + b_156),
     ndre_cx3 = (b_253 - b_151) / (b_253 + b_151),
 
-    # --- CIgreen-like (NIR / Green - 1) ---
-    # You have a green band at ~583 (b_92)
+    # CIgreen-like
     ci_green_cx1 = (b_271 / b_92) - 1,
     ci_green_cx2 = (b_281 / b_92) - 1,
 
-    # --- CIred-edge-like (NIR / RedEdge - 1) ---
-    ci_re_cx1 = (b_271 / b_155) - 1,
-    ci_re_cx2 = (b_281 / b_155) - 1,
+    # CIred-edge-like
+    ci_re_cx1 = (b_271 / b_151) - 1,
+    ci_re_cx2 = (b_281 / b_156) - 1,
 
-    # --- Blue/Green pigment proxies (carotenoids live in the blue) ---
+    # Blue/Green proxies
     nd_blue_green_cx1 = (b_92 - b_18) / (b_92 + b_18),
     nd_blue_green_cx2 = (b_92 - b_42) / (b_92 + b_42),
 
-    # --- Blue/Red pigment balance proxies ---
-    br_cx1 = b_36 / b_123,   # blue-ish / red
-    br_cx2 = b_49 / b_139,   # blue-ish / deep red
+    # Blue/Red proxies
+    br_cx1 = b_48 / b_123,
+    br_cx2 = b_49 / b_139,
 
-    # --- Red-edge slope proxies (edge strength / pigment transition) ---
+    # Red-edge slope proxies
     re_slope_cx1 = (b_174 - b_146) / (b_174 + b_146),
     re_slope_cx2 = (b_173 - b_151) / (b_173 + b_151)
 
@@ -1408,21 +1427,13 @@ ponder_cx_c <- ponder_cx_c %>%
 
 ```{r Heatmap Cx_C}
 index_cols_cx_c <- c(
-  "ndvi_cx1",
-  "ndvi_cx2",
-  "ndre_cx1",
-  "ndre_cx2",
-  "ndre_cx3",
-  "ci_green_cx1",
-  "ci_green_cx2",
-  "ci_re_cx1",
-  "ci_re_cx2",
-  "nd_blue_green_cx1",
-  "nd_blue_green_cx2",
-  "br_cx1",
-  "br_cx2",
-  "re_slope_cx1",
-  "re_slope_cx2"
+  "ndvi_cx1", "ndvi_cx2",
+  "ndre_cx1", "ndre_cx2", "ndre_cx3",
+  "ci_green_cx1", "ci_green_cx2",
+  "ci_re_cx1", "ci_re_cx2",
+  "nd_blue_green_cx1", "nd_blue_green_cx2",
+  "br_cx1", "br_cx2",
+  "re_slope_cx1", "re_slope_cx2"
 )
 
 spearman_idx_cxc <- ponder_cx_c %>%
@@ -1448,7 +1459,7 @@ cb_heat <- ggplot(spearman_idx_cxc, aes(x = index, y = "gs", fill = rho)) +
 
 ```{r}
 ggplot(data = selected_bands_wl,
-       aes(x = as.factor(wavelength),
+       aes(x = wavelength,
            y = coefficient
            )) +
   geom_col(width = 2) +
@@ -1474,17 +1485,84 @@ long_ponder <- clean_ponder %>%
   pivot_longer(cols = contains("b_"),
                values_to = "reflect",
                names_to = "band")%>%
-  pivot_longer(cols = c("net_photo":"cx_c"), 
+  pivot_longer(cols = c("ca":"etr"), 
                names_to = "variable")
 
 write_csv(long_ponder, file = "../Output/bands.csv")
 
 regression <- long_ponder %>% 
-  inner_join(selec, 
+  inner_join(selected_bands_wl, 
             by = c("band", "variable"))
 
 write_csv(regression, file = "../Output/bands_filt.csv")
 
+unique(regression$dap)
+
+```
+```{r}
+# ----------------------------
+# CA
+# ----------------------------
+ca74i <- ponder_ca %>% filter(dap == 74)  %>% select(ca,   all_of(index_cols_ca))   %>% rename(ca74i = ca)
+ca81i <- ponder_ca %>% filter(dap == 81)  %>% select(ca,   all_of(index_cols_ca))   %>% rename(ca81i = ca)
+ca82i <- ponder_ca %>% filter(dap == 82)  %>% select(ca,   all_of(index_cols_ca))   %>% rename(ca82i = ca)
+ca89i <- ponder_ca %>% filter(dap == 89)  %>% select(ca,   all_of(index_cols_ca))   %>% rename(ca89i = ca)
+ca109i <- ponder_ca %>% filter(dap == 109) %>% select(ca,  all_of(index_cols_ca))   %>% rename(ca109i = ca)
+ca112i <- ponder_ca %>% filter(dap == 112) %>% select(ca,  all_of(index_cols_ca))   %>% rename(ca112i = ca)
+
+# ----------------------------
+# CB
+# ----------------------------
+cb74i <- ponder_cb %>% filter(dap == 74)  %>% select(cb,   all_of(index_cols_cb))   %>% rename(cb74i = cb)
+cb81i <- ponder_cb %>% filter(dap == 81)  %>% select(cb,   all_of(index_cols_cb))   %>% rename(cb81i = cb)
+cb82i <- ponder_cb %>% filter(dap == 82)  %>% select(cb,   all_of(index_cols_cb))   %>% rename(cb82i = cb)
+cb89i <- ponder_cb %>% filter(dap == 89)  %>% select(cb,   all_of(index_cols_cb))   %>% rename(cb89i = cb)
+cb109i <- ponder_cb %>% filter(dap == 109) %>% select(cb,  all_of(index_cols_cb))   %>% rename(cb109i = cb)
+cb112i <- ponder_cb %>% filter(dap == 112) %>% select(cb,  all_of(index_cols_cb))   %>% rename(cb112i = cb)
+
+# ----------------------------
+# CX_C
+# ----------------------------
+cxc74i <- ponder_cx_c %>% filter(dap == 74)  %>% select(cx_c, all_of(index_cols_cx_c)) %>% rename(cxc74i = cx_c)
+cxc75i <- ponder_cx_c %>% filter(dap == 75)  %>% select(cx_c, all_of(index_cols_cx_c)) %>% rename(cxc75i = cx_c)
+cxc81i <- ponder_cx_c %>% filter(dap == 81)  %>% select(cx_c, all_of(index_cols_cx_c)) %>% rename(cxc81i = cx_c)
+cxc82i <- ponder_cx_c %>% filter(dap == 82)  %>% select(cx_c, all_of(index_cols_cx_c)) %>% rename(cxc82i = cx_c)
+cxc89i <- ponder_cx_c %>% filter(dap == 89)  %>% select(cx_c, all_of(index_cols_cx_c)) %>% rename(cxc89i = cx_c)
+cxc109i <- ponder_cx_c %>% filter(dap == 109) %>% select(cx_c, all_of(index_cols_cx_c)) %>% rename(cxc109i = cx_c)
+cxc112i <- ponder_cx_c %>% filter(dap == 112) %>% select(cx_c, all_of(index_cols_cx_c)) %>% rename(cxc112i = cx_c)
+
+# ----------------------------
+# ETR
+# ----------------------------
+etr74i <- ponder_etr %>% filter(dap == 74)  %>% select(etr,  all_of(index_cols_etr)) %>% rename(etr74i = etr)
+etr75i <- ponder_etr %>% filter(dap == 75)  %>% select(etr,  all_of(index_cols_etr)) %>% rename(etr75i = etr)
+etr81i <- ponder_etr %>% filter(dap == 81)  %>% select(etr,  all_of(index_cols_etr)) %>% rename(etr81i = etr)
+etr82i <- ponder_etr %>% filter(dap == 82)  %>% select(etr,  all_of(index_cols_etr)) %>% rename(etr82i = etr)
+etr89i <- ponder_etr %>% filter(dap == 89)  %>% select(etr,  all_of(index_cols_etr)) %>% rename(etr89i = etr)
+etr109i <- ponder_etr %>% filter(dap == 109) %>% select(etr, all_of(index_cols_etr)) %>% rename(etr109i = etr)
+etr112i <- ponder_etr %>% filter(dap == 112) %>% select(etr, all_of(index_cols_etr)) %>% rename(etr112i = etr)
+
+# ----------------------------
+# GS
+# ----------------------------
+gs74i <- ponder_gs %>% filter(dap == 74)  %>% select(gs,   all_of(index_cols_gs))   %>% rename(gs74i = gs)
+gs75i <- ponder_gs %>% filter(dap == 75)  %>% select(gs,   all_of(index_cols_gs))   %>% rename(gs75i = gs)
+gs81i <- ponder_gs %>% filter(dap == 81)  %>% select(gs,   all_of(index_cols_gs))   %>% rename(gs81i = gs)
+gs82i <- ponder_gs %>% filter(dap == 82)  %>% select(gs,   all_of(index_cols_gs))   %>% rename(gs82i = gs)
+gs89i <- ponder_gs %>% filter(dap == 89)  %>% select(gs,   all_of(index_cols_gs))   %>% rename(gs89i = gs)
+gs109i <- ponder_gs %>% filter(dap == 109) %>% select(gs,  all_of(index_cols_gs))   %>% rename(gs109i = gs)
+gs112i <- ponder_gs %>% filter(dap == 112) %>% select(gs,  all_of(index_cols_gs))   %>% rename(gs112i = gs)
+
+# ----------------------------
+# PN
+# ----------------------------
+pn74i <- ponder_pn %>% filter(dap == 74)  %>% select(pn,   all_of(index_cols_pn))   %>% rename(pn74i = pn)
+pn75i <- ponder_pn %>% filter(dap == 75)  %>% select(pn,   all_of(index_cols_pn))   %>% rename(pn75i = pn)
+pn81i <- ponder_pn %>% filter(dap == 81)  %>% select(pn,   all_of(index_cols_pn))   %>% rename(pn81i = pn)
+pn82i <- ponder_pn %>% filter(dap == 82)  %>% select(pn,   all_of(index_cols_pn))   %>% rename(pn82i = pn)
+pn89i <- ponder_pn %>% filter(dap == 89)  %>% select(pn,   all_of(index_cols_pn))   %>% rename(pn89i = pn)
+pn109i <- ponder_pn %>% filter(dap == 109) %>% select(pn,  all_of(index_cols_pn))   %>% rename(pn109i = pn)
+pn112i <- ponder_pn %>% filter(dap == 112) %>% select(pn,  all_of(index_cols_pn))   %>% rename(pn112i = pn)
 ```
 
 ```{r Subset of Variables 74 DAP}
@@ -1500,6 +1578,225 @@ ca74 <- regression %>%
   rename(ca74 = value) %>%
   select(-variable)
 
+ca82i <- ponder_ca %>%
+  filter(dap == 82) %>%
+  select(8, 28:40) %>%
+  rename(ca82i = ca)
+
+ca89i <- ponder_ca %>%
+  filter(dap == 89)%>%
+  select(8, 28:40) %>%
+  rename(ca89i = ca)
+
+ca112i <- ponder_ca %>%
+  filter(dap == 112) %>%
+  select(8, 28:40) %>%
+  rename(ca112i = ca)
+
+ca74i <- ponder_ca %>%
+  filter(dap == 74)%>%
+  select(8, 28:40) %>%
+  rename(ca74i = ca)
+
+ca81i <- ponder_ca %>%
+  filter(dap == 81) %>%
+  select(8, 28:40) %>%
+  rename(ca81i = ca)
+
+ca109i <- ponder_ca %>%
+  filter(dap == 109) %>%
+  select(8, 28:40) %>%
+  rename(ca109i = ca)
+
+cb82i <- ponder_cb %>%
+  filter(dap == 82) %>%
+  select(8,40:50) %>%
+  rename(cb82i = cb)
+
+cb89i <- ponder_cb %>%
+  filter(dap == 89) %>%
+  select(8,40:50) %>%
+  rename(cb89i = cb)
+
+cb112i <- ponder_cb %>%
+  filter(dap == 112) %>%
+  select(8,40:50) %>%
+  rename(cb112i = cb)
+
+cb74i <- ponder_cb %>%
+  filter(dap == 74) %>%
+  select(8,40:50) %>%
+  rename(cb74i = cb)
+
+cb81i <- ponder_cb %>%
+  filter(dap == 81) %>%
+  select(8,40:50) %>%
+  rename(cb81i = cb)
+
+cb109i <- ponder_cb %>%
+  filter(dap == 109) %>%
+  select(8,40:50) %>%
+  rename(cb109i = cb)
+
+cxc75i <- ponder_cx_c %>%
+  filter(dap == 75) %>%
+  select(8, 40:50) %>%
+  rename(cxc75i = cx_c)
+
+cxc82i <- ponder_cx_c %>%
+  filter(dap == 82) %>%
+  select(8, 40:50) %>%
+  rename(cxc82i = cx_c)
+
+cxc89i <- ponder_cx_c %>%
+  filter(dap == 89) %>%
+  select(8, 40:50) %>%
+  rename(cxc89i = cx_c)
+
+cxc112i <- ponder_cx_c %>%
+  filter(dap == 112) %>%
+  select(8, 40:50) %>%
+  rename(cxc112i = cx_c)
+
+cxc74i <- ponder_cx_c %>%
+  filter(dap == 74) %>%
+  select(8, 40:50) %>%
+  rename(cxc74i = cx_c)
+
+cxc81i <- ponder_cx_c %>%
+  filter(dap == 81) %>%
+  select(8, 40:50) %>%
+  rename(cxc81i = cx_c)
+
+cxc109i <- ponder_cx_c %>%
+  filter(dap == 109) %>%
+  select(8, 40:50) %>%
+  rename(cxc109i = cx_c)
+
+etr75i <- ponder_etr %>%
+  filter(dap == 75) %>%
+  select(8, 40:50) %>%
+  rename(etr75i = etr)
+
+etr82i <- ponder_etr %>%
+  filter(dap == 82) %>%
+  select(8, 40:50) %>%
+  rename(etr82i = etr)
+
+etr89i <- ponder_etr %>%
+  filter(dap == 89) %>%
+  select(8, 40:50) %>%
+  rename(etr89i = etr)
+
+etr112i <- ponder_etr %>%
+  filter(dap == 112) %>%
+  select(8, 40:50) %>%
+  rename(etr112i = etr)
+
+etr74i <- ponder_etr %>%
+  filter(dap == 74) %>%
+  select(8, 40:50) %>%
+  rename(etr74i = etr)
+
+etr81i <- ponder_etr %>%
+  filter(dap == 81) %>%
+  select(8, 40:50) %>%
+  rename(etr81i = etr)
+
+etr109i <- ponder_etr %>%
+  filter(dap == 109) %>%
+  select(8, 40:50) %>%
+  rename(etr109i = etr)
+
+gs75i <- ponder_gs %>%
+  filter(dap == 75) %>%
+  select(8, 31:45)%>%
+  rename(gs75i = gs)
+
+gs82i <- ponder_gs %>%
+  filter(dap == 82) %>%
+  select(8, 31:45)%>%
+  rename(gs82i = gs)
+
+gs89i <- ponder_gs %>%
+  filter(dap == 89) %>%
+  select(8, 31:45)%>%
+  rename(gs89i = gs)
+
+gs112i <- ponder_gs %>%
+  filter(dap == 112) %>%
+  select(8, 31:45)%>%
+  rename(gs112i = gs)
+
+gs74i <- ponder_gs %>%
+  filter(dap == 74) %>%
+  select(8, 31:45)%>%
+  rename(gs74i = gs)
+
+gs81i <- ponder_gs %>%
+  filter(dap == 81) %>%
+  select(8, 31:45)%>%
+  rename(gs81i = gs)
+
+gs109i <- ponder_gs %>%
+  filter(dap == 109) %>%
+  select(8, 31:45)%>%
+  rename(gs109i = gs)
+
+pn75i <- ponder_pn %>%
+  filter(dap == 75) %>%
+  select(8,50) %>%
+  rename(pn75i = pn)
+
+pn82i <- ponder_pn %>%
+  filter(dap == 82) %>%
+  select(8,50) %>%
+  rename(pn82i = pn)
+
+pn89i <- ponder_pn %>%
+  filter(dap == 89) %>%
+  select(8,50) %>%
+  rename(pn89i = pn)
+
+pn112i <- ponder_pn %>%
+  filter(dap == 112) %>%
+  select(8,50) %>%
+  rename(pn112i = pn)
+
+pn74i <- ponder_pn %>%
+  filter(dap == 74) %>%
+  select(8,50) %>%
+  rename(pn74i = pn)
+
+pn81i <- ponder_pn %>%
+  filter(dap == 81) %>%
+  select(8,50) %>%
+  rename(pn81i = pn)
+
+pn109i <- ponder_pn %>%
+  filter(dap == 109) %>%
+  select(8,50) %>%
+  rename(pn109i = pn)
+
+
+
+
+
+
+
+ca75 <- regression %>%
+  filter(variable == "ca" & dap == 75) %>%
+  select(band:value, reflect) %>% 
+  pivot_wider(
+    names_from = band,
+    values_from = reflect,
+    values_fn = mean   # or median
+  ) %>%
+  rename(ca75 = value) %>%
+  select(-variable)
+
+
+
 cx_c74 <- regression %>%
   filter(variable == "cx_c" & dap == 74) %>%
   select(band:value, reflect) %>% 
@@ -1509,6 +1806,17 @@ cx_c74 <- regression %>%
     values_fn = mean   # or median
   ) %>%
   rename(cx_c74 = value) %>%
+  select(-variable)
+
+cx_c75 <- regression %>%
+  filter(variable == "cx_c" & dap == 75) %>%
+  select(band:value, reflect) %>% 
+  pivot_wider(
+    names_from = band,
+    values_from = reflect,
+    values_fn = mean   # or median
+  ) %>%
+  rename(cx_c75 = value) %>%
   select(-variable)
 
 cb74 <- regression %>%
@@ -1522,6 +1830,17 @@ cb74 <- regression %>%
   rename(cb74 = value) %>%
   select(-variable)
 
+cb75 <- regression %>%
+  filter(variable == "cb" & dap == 75) %>%
+  select(band:value, reflect) %>% 
+  pivot_wider(
+    names_from = band,
+    values_from = reflect,
+    values_fn = mean   # or median
+  ) %>%
+  rename(cb75 = value) %>%
+  select(-variable)
+
 etr74 <- regression %>%
   filter(variable == "etr" & dap == 74) %>%
   select(band:value, reflect) %>% 
@@ -1533,6 +1852,16 @@ etr74 <- regression %>%
   rename(etr74 = value) %>%
   select(-variable)
 
+etr75 <- regression %>%
+  filter(variable == "etr" & dap == 75) %>%
+  select(band:value, reflect) %>% 
+  pivot_wider(
+    names_from = band,
+    values_from = reflect,
+    values_fn = mean   # or median
+  ) %>%
+  rename(etr75 = value) %>%
+  select(-variable)
 
 gs74 <- regression %>%
   filter(variable == "gs" & dap == 74) %>%
@@ -1545,9 +1874,19 @@ gs74 <- regression %>%
   rename(gs74 = value) %>%
   select(-variable)
 
+gs75 <- regression %>%
+  filter(variable == "gs" & dap == 75) %>%
+  select(band:value, reflect) %>% 
+  pivot_wider(
+    names_from = band,
+    values_from = reflect,
+    values_fn = mean   # or median
+  ) %>%
+  rename(gs75 = value) %>%
+  select(-variable)
 
 net_photo74 <- regression %>%
-  filter(variable == "net_photo" & dap == 74) %>%
+  filter(variable == "pn" & dap == 74) %>%
   select(band:value, reflect) %>% 
   pivot_wider(
     names_from = band,
@@ -1555,6 +1894,17 @@ net_photo74 <- regression %>%
     values_fn = mean   # or median
   ) %>%
   rename(net_photo74 = value) %>%
+  select(-variable)
+
+net_photo75 <- regression %>%
+  filter(variable == "pn" & dap == 74) %>%
+  select(band:value, reflect) %>% 
+  pivot_wider(
+    names_from = band,
+    values_from = reflect,
+    values_fn = mean   # or median
+  ) %>%
+  rename(net_photo75 = value) %>%
   select(-variable)
 
 ```
@@ -1571,6 +1921,28 @@ ca81 <- regression %>%
     values_fn = mean   # or median
   ) %>%
   rename(ca81 = value) %>%
+  select(-variable)
+
+ca82 <- regression %>%
+  filter(variable == "ca" & dap == 82) %>%
+  select(band:value, reflect) %>% 
+  pivot_wider(
+    names_from = band,
+    values_from = reflect,
+    values_fn = mean   # or median
+  ) %>%
+  rename(ca82 = value) %>%
+  select(-variable)
+
+cx_c82 <- regression %>%
+  filter(variable == "cx_c" & dap == 82) %>%
+  select(band:value, reflect) %>% 
+  pivot_wider(
+    names_from = band,
+    values_from = reflect,
+    values_fn = mean   # or median
+  ) %>%
+  rename(cx_c82 = value) %>%
   select(-variable)
 
 cx_c81 <- regression %>%
@@ -1595,6 +1967,17 @@ cb81 <- regression %>%
   rename(cb81 = value) %>%
   select(-variable)
 
+cb82 <- regression %>%
+  filter(variable == "cb" & dap == 82) %>%
+  select(band:value, reflect) %>% 
+  pivot_wider(
+    names_from = band,
+    values_from = reflect,
+    values_fn = mean   # or median
+  ) %>%
+  rename(cb82 = value) %>%
+  select(-variable)
+
 etr81 <- regression %>%
   filter(variable == "etr" & dap == 81) %>%
   select(band:value, reflect) %>% 
@@ -1606,6 +1989,16 @@ etr81 <- regression %>%
   rename(etr81 = value) %>%
   select(-variable)
 
+etr82 <- regression %>%
+  filter(variable == "etr" & dap == 82) %>%
+  select(band:value, reflect) %>% 
+  pivot_wider(
+    names_from = band,
+    values_from = reflect,
+    values_fn = mean   # or median
+  ) %>%
+  rename(etr82 = value) %>%
+  select(-variable)
 
 gs81 <- regression %>%
   filter(variable == "gs" & dap == 81) %>%
@@ -1618,9 +2011,19 @@ gs81 <- regression %>%
   rename(gs81 = value) %>%
   select(-variable)
 
+gs82 <- regression %>%
+  filter(variable == "gs" & dap == 82) %>%
+  select(band:value, reflect) %>% 
+  pivot_wider(
+    names_from = band,
+    values_from = reflect,
+    values_fn = mean   # or median
+  ) %>%
+  rename(gs82 = value) %>%
+  select(-variable)
 
 net_photo81 <- regression %>%
-  filter(variable == "net_photo" & dap == 81) %>%
+  filter(variable == "pn" & dap == 81) %>%
   select(band:value, reflect) %>% 
   pivot_wider(
     names_from = band,
@@ -1628,6 +2031,17 @@ net_photo81 <- regression %>%
     values_fn = mean   # or median
   ) %>%
   rename(net_photo81 = value) %>%
+  select(-variable)
+
+net_photo82 <- regression %>%
+  filter(variable == "pn" & dap == 82) %>%
+  select(band:value, reflect) %>% 
+  pivot_wider(
+    names_from = band,
+    values_from = reflect,
+    values_fn = mean   # or median
+  ) %>%
+  rename(net_photo82 = value) %>%
   select(-variable)
 
 ```
@@ -1646,6 +2060,29 @@ ca109 <- regression %>%
   rename(ca109 = value) %>%
   select(-variable)
 
+ca112 <- regression %>%
+  filter(variable == "ca" & dap == 112) %>%
+  select(band:value, reflect) %>% 
+  pivot_wider(
+    names_from = band,
+    values_from = reflect,
+    values_fn = mean   # or median
+  ) %>%
+  rename(ca112 = value) %>%
+  select(-variable)
+
+ca89  <- regression %>%
+  filter(variable == "ca" & dap == 89 ) %>%
+  select(band:value, reflect) %>% 
+  pivot_wider(
+    names_from = band,
+    values_from = reflect,
+    values_fn = mean   # or median
+  ) %>%
+  rename(ca89  = value) %>%
+  select(-variable)
+
+
 cx_c109 <- regression %>%
   filter(variable == "cx_c" & dap == 109) %>%
   select(band:value, reflect) %>% 
@@ -1655,6 +2092,28 @@ cx_c109 <- regression %>%
     values_fn = mean   # or median
   ) %>%
   rename(cx_c109 = value) %>%
+  select(-variable)
+
+cx_c112 <- regression %>%
+  filter(variable == "cx_c" & dap == 112) %>%
+  select(band:value, reflect) %>% 
+  pivot_wider(
+    names_from = band,
+    values_from = reflect,
+    values_fn = mean   # or median
+  ) %>%
+  rename(cx_c112 = value) %>%
+  select(-variable)
+
+cx_c89  <- regression %>%
+  filter(variable == "cx_c" & dap == 89 ) %>%
+  select(band:value, reflect) %>% 
+  pivot_wider(
+    names_from = band,
+    values_from = reflect,
+    values_fn = mean   # or median
+  ) %>%
+  rename(cx_c89  = value) %>%
   select(-variable)
 
 cb109 <- regression %>%
@@ -1668,6 +2127,28 @@ cb109 <- regression %>%
   rename(cb109 = value) %>%
   select(-variable)
 
+cb112 <- regression %>%
+  filter(variable == "cb" & dap == 112) %>%
+  select(band:value, reflect) %>% 
+  pivot_wider(
+    names_from = band,
+    values_from = reflect,
+    values_fn = mean   # or median
+  ) %>%
+  rename(cb112 = value) %>%
+  select(-variable)
+
+cb89  <- regression %>%
+  filter(variable == "cb" & dap == 89 ) %>%
+  select(band:value, reflect) %>% 
+  pivot_wider(
+    names_from = band,
+    values_from = reflect,
+    values_fn = mean   # or median
+  ) %>%
+  rename(cb89  = value) %>%
+  select(-variable)
+
 etr109 <- regression %>%
   filter(variable == "etr" & dap == 109) %>%
   select(band:value, reflect) %>% 
@@ -1677,6 +2158,28 @@ etr109 <- regression %>%
     values_fn = mean   # or median
   ) %>%
   rename(etr109 = value) %>%
+  select(-variable)
+
+etr112 <- regression %>%
+  filter(variable == "etr" & dap == 112) %>%
+  select(band:value, reflect) %>% 
+  pivot_wider(
+    names_from = band,
+    values_from = reflect,
+    values_fn = mean   # or median
+  ) %>%
+  rename(etr112 = value) %>%
+  select(-variable)
+
+etr89  <- regression %>%
+  filter(variable == "etr" & dap == 89 ) %>%
+  select(band:value, reflect) %>% 
+  pivot_wider(
+    names_from = band,
+    values_from = reflect,
+    values_fn = mean   # or median
+  ) %>%
+  rename(etr89  = value) %>%
   select(-variable)
 
 
@@ -1691,9 +2194,30 @@ gs109 <- regression %>%
   rename(gs109 = value) %>%
   select(-variable)
 
+gs112 <- regression %>%
+  filter(variable == "gs" & dap == 112) %>%
+  select(band:value, reflect) %>% 
+  pivot_wider(
+    names_from = band,
+    values_from = reflect,
+    values_fn = mean   # or median
+  ) %>%
+  rename(gs112 = value) %>%
+  select(-variable)
+
+gs89  <- regression %>%
+  filter(variable == "gs" & dap == 89 ) %>%
+  select(band:value, reflect) %>% 
+  pivot_wider(
+    names_from = band,
+    values_from = reflect,
+    values_fn = mean   # or median
+  ) %>%
+  rename(gs89  = value) %>%
+  select(-variable)
 
 net_photo109 <- regression %>%
-  filter(variable == "net_photo" & dap == 109) %>%
+  filter(variable == "pn" & dap == 109) %>%
   select(band:value, reflect) %>% 
   pivot_wider(
     names_from = band,
@@ -1703,6 +2227,27 @@ net_photo109 <- regression %>%
   rename(net_photo109 = value) %>%
   select(-variable)
 
+net_photo112 <- regression %>%
+  filter(variable == "pn" & dap == 112) %>%
+  select(band:value, reflect) %>% 
+  pivot_wider(
+    names_from = band,
+    values_from = reflect,
+    values_fn = mean   # or median
+  ) %>%
+  rename(net_photo112 = value) %>%
+  select(-variable)
+
+net_photo89  <- regression %>%
+  filter(variable == "pn" & dap == 89 ) %>%
+  select(band:value, reflect) %>% 
+  pivot_wider(
+    names_from = band,
+    values_from = reflect,
+    values_fn = mean   # or median
+  ) %>%
+  rename(net_photo89  = value) %>%
+  select(-variable)
 ```
 
 ```{r Setting up Models, Hyperparameters, and Evaluation Metrics}
@@ -1724,12 +2269,23 @@ evaluate_model <- function(model, dataset, target_name, dataset_name) {
 # Dataset names
 
 datasets <- list(
-  ca74 = ca74, ca81 = ca81, ca109 = ca109,
-  cb74 = cb74, cb81 = cb81, cb109 = cb109,
-  cx_c74 = cx_c74, cx_c81 = cx_c81, cx_c109 = cx_c109,
-  etr74 = etr74, etr81 = etr81, etr109 = etr109,
-  gs74 = gs74, gs81 = gs81, gs109 = gs109,
-  net_photo74 = net_photo74, net_photo81 = net_photo81, net_photo109 = net_photo109
+  ca74 = ca74, ca81 = ca81, ca82 = ca82, ca89 = ca89, ca109 = ca109, ca112 = ca112,
+  cb74 = cb74, cb81 = cb81, cb82 = cb82, cb89 = cb89, cb109 = cb109, cb112 = cb112,
+  cx_c74 = cx_c74, cx_c81 = cx_c81, cx_c82 = cx_c82, cx_c89 = cx_c89, cx_c109 = cx_c109, cx_c112 = cx_c112,
+  etr74 = etr74, etr75 = etr75, etr81 = etr81, etr82 = etr82, etr89 = etr89, etr109 = etr109, etr112 = etr112,
+  gs74 = gs74, gs75 = gs75, gs81 = gs81, gs82 = gs82, gs89 = gs89, gs109 = gs109, gs112 = gs112,
+  net_photo74 = net_photo74, net_photo75 = net_photo75, net_photo81 = net_photo81,
+  net_photo82 = net_photo82, net_photo89 = net_photo89, net_photo109 = net_photo109, net_photo112 = net_photo112
+)
+
+
+datasets_index <- list(
+  ca74i = ca74i, ca81i = ca81i, ca82i = ca82i, ca89i = ca89i, ca109i = ca109i, ca112i = ca112i,
+  cb74i = cb74i, cb81i = cb81i, cb82i = cb82i, cb89i = cb89i, cb109i = cb109i, cb112i = cb112i,
+  cxc74i = cxc74i, cxc75i = cxc75i, cxc81i = cxc81i, cxc82i = cxc82i, cxc89i = cxc89i, cxc109i = cxc109i, cxc112i = cxc112i,
+  etr74i = etr74i, etr75i = etr75i, etr81i = etr81i, etr82i = etr82i, etr89i = etr89i, etr109i = etr109i, etr112i = etr112i,
+  gs74i = gs74i, gs75i = gs75i, gs81i = gs81i, gs82i = gs82i, gs89i = gs89i, gs109i = gs109i, gs112i = gs112i,
+  pn74i = pn74i, pn75i = pn75i, pn81i = pn81i, pn82i = pn82i, pn89i = pn89i, pn109i = pn109i, pn112i = pn112i
 )
 
 # Controle de treinamento
@@ -1742,6 +2298,19 @@ tune_grid_knn <- expand.grid(kmax = c(3, 5, 7, 9, 11), distance = c(1, 2), kerne
 tune_grid_xgbTree <- expand.grid(nrounds = c(500, 1000, 1500), max_depth = c(2, 4, 6), eta = c(0.01, 0.1, 0.3),
                                  gamma = c(0, 0.1, 0.2), colsample_bytree = c(0.4, 0.6, 0.8, 1), min_child_weight = c(1, 3, 5), subsample = 1)
 ```
+
+```{r}
+names(ca74i)
+names(cb74i)
+names(cxc74i)
+names(etr74i)
+names(gs74i)
+names(pn74i)
+```
+
+
+
+
 
 ```{r Random Forest Regression Model}
 resultados_rf <- data.frame()
@@ -1756,7 +2325,7 @@ for (nome_dataset in names(datasets)) {
   target <- names(df)[1]
   
   set.seed(123)
-  inTraining <- createDataPartition(df[[target]], p = 0.8, list = FALSE)
+  inTraining <- createDataPartition(df[[target]], p = 0.7, list = FALSE)
   treino <- df[inTraining,]
   teste <- df[-inTraining,]
   
@@ -1780,14 +2349,345 @@ print(resultados_rf)
 
 ```
 
+```{r Evaluate to rep}
+evaluate_model <- function(model, dataset, target_name, dataset_name) {
+  predicoes <- predict(model, dataset)
+  obs <- dataset[[target_name]]
+  
+  data.frame(
+    Dataset = dataset_name,
+    MAE = mean(abs(predicoes - obs)),
+    MSE = mean((predicoes - obs)^2),
+    RMSE = sqrt(mean((predicoes - obs)^2)),
+    R2 = cor(predicoes, obs)^2
+  )
+}
+```
+
+```{r Function to Rep}
+make_ctrl <- function(tune_grid, seed = 42, number = 5, repeats = 5) {
+  n_resamples <- number * repeats
+  n_models <- nrow(tune_grid)
+  
+  set.seed(seed)
+  seeds <- vector(mode = "list", length = n_resamples + 1)
+  
+  for (i in seq_len(n_resamples)) {
+    seeds[[i]] <- sample.int(100000, n_models)
+  }
+  
+  seeds[[n_resamples + 1]] <- sample.int(100000, 1)
+  
+  trainControl(
+    method = "repeatedcv",
+    number = number,
+    repeats = repeats,
+    search = "grid",
+    seeds = seeds
+  )
+}
+```
+
+```{r RF Indices Rep}
+resultados_rf_i <- data.frame()
+
+for (nome_dataset in names(datasets_index)) {
+  
+  df <- datasets_index[[nome_dataset]] %>%
+    na.omit()
+  
+  if (is.null(df) || nrow(df) < 5 || ncol(df) < 2) {
+    message("Skipping ", nome_dataset, ": too few rows or columns")
+    next
+  }
+  
+  target <- names(df)[1]
+  
+  if (is.na(target) || !(target %in% names(df))) {
+    message("Skipping ", nome_dataset, ": invalid target")
+    next
+  }
+  
+  n_pred <- ncol(df) - 1
+  
+  if (n_pred < 1) {
+    message("Skipping ", nome_dataset, ": no predictors")
+    next
+  }
+  
+  tune_grid_rf <- expand.grid(
+    mtry = unique(pmin(c(2, 3, 4, 5), n_pred)),
+    splitrule = c("variance", "extratrees"),
+    min.node.size = c(1, 5, 10)
+  )
+  
+  ctrl_rf <- make_ctrl(tune_grid_rf, seed = 42, number = 5, repeats = 5)
+  
+  set.seed(42)
+  inTraining <- createDataPartition(df[[target]], p = 0.7, list = FALSE)
+  treino <- df[inTraining, , drop = FALSE]
+  teste  <- df[-inTraining, , drop = FALSE]
+  
+  if (nrow(teste) < 1) {
+    message("Skipping ", nome_dataset, ": no test rows")
+    next
+  }
+  
+  set.seed(42)
+  model_rf <- train(
+    as.formula(paste(target, "~ .")),
+    data = treino,
+    method = "ranger",
+    trControl = ctrl_rf,
+    tuneGrid = tune_grid_rf,
+    importance = "impurity"
+  )
+  
+  metricas_treino <- evaluate_model(model_rf, treino, target, paste(nome_dataset, "- Treino"))
+  metricas_teste  <- evaluate_model(model_rf, teste,  target, paste(nome_dataset, "- Teste"))
+  
+  resultados_rf_i <- bind_rows(resultados_rf_i, metricas_treino, metricas_teste)
+}
+
+print(resultados_rf_i)
+```
+
+```{r SVM Rep}
+resultados_svm_i <- data.frame()
+
+for (nome_dataset in names(datasets_index)) {
+  
+  df <- datasets_index[[nome_dataset]] %>%
+    na.omit()
+  
+  if (is.null(df) || nrow(df) < 5 || ncol(df) < 2) {
+    message("Skipping ", nome_dataset, ": too few rows or columns")
+    next
+  }
+  
+  target <- names(df)[1]
+  
+  if (is.na(target) || !(target %in% names(df))) {
+    message("Skipping ", nome_dataset, ": invalid target")
+    next
+  }
+  
+  n_pred <- ncol(df) - 1
+  
+  if (n_pred < 1) {
+    message("Skipping ", nome_dataset, ": no predictors")
+    next
+  }
+  
+  set.seed(42)
+  inTraining <- createDataPartition(df[[target]], p = 0.7, list = FALSE)
+  treino <- df[inTraining, , drop = FALSE]
+  teste  <- df[-inTraining, , drop = FALSE]
+  
+  if (nrow(teste) < 1) {
+    message("Skipping ", nome_dataset, ": no test rows")
+    next
+  }
+  
+  # remove near-zero variance predictors
+  nzv <- nearZeroVar(treino, saveMetrics = TRUE)
+  cols_keep <- rownames(nzv)[!nzv$nzv]
+  cols_keep <- union(target, cols_keep)
+  
+  treino <- treino[, cols_keep, drop = FALSE]
+  teste  <- teste[, cols_keep, drop = FALSE]
+  
+  if (ncol(treino) < 2) {
+    message("Skipping ", nome_dataset, ": predictors removed after nearZeroVar")
+    next
+  }
+  
+  tune_grid_svm <- expand.grid(
+    C = c(0.1, 1, 10, 100),
+    sigma = c(0.001, 0.01, 0.1, 1)
+  )
+  
+  ctrl_svm <- make_ctrl(tune_grid_svm, seed = 42, number = 5, repeats = 5)
+  
+  set.seed(42)
+  model_svm <- train(
+    as.formula(paste(target, "~ .")),
+    data = treino,
+    method = "svmRadial",
+    preProcess = c("center", "scale"),
+    trControl = ctrl_svm,
+    tuneGrid = tune_grid_svm
+  )
+  
+  metricas_treino <- evaluate_model(model_svm, treino, target, paste(nome_dataset, "- Treino"))
+  metricas_teste  <- evaluate_model(model_svm, teste,  target, paste(nome_dataset, "- Teste"))
+  
+  resultados_svm_i <- bind_rows(resultados_svm_i, metricas_treino, metricas_teste)
+}
+
+print(resultados_svm_i)
+```
+
+```{r KNN Rep}
+
+resultados_knn_i <- data.frame()
+
+for (nome_dataset in names(datasets_index)) {
+  
+  df <- datasets_index[[nome_dataset]] %>%
+    na.omit()
+  
+  if (is.null(df) || nrow(df) < 5 || ncol(df) < 2) {
+    message("Skipping ", nome_dataset, ": too few rows or columns")
+    next
+  }
+  
+  target <- names(df)[1]
+  
+  if (is.na(target) || !(target %in% names(df))) {
+    message("Skipping ", nome_dataset, ": invalid target")
+    next
+  }
+  
+  n_pred <- ncol(df) - 1
+  
+  if (n_pred < 1) {
+    message("Skipping ", nome_dataset, ": no predictors")
+    next
+  }
+  
+  set.seed(42)
+  inTraining <- createDataPartition(df[[target]], p = 0.7, list = FALSE)
+  treino <- df[inTraining, , drop = FALSE]
+  teste  <- df[-inTraining, , drop = FALSE]
+  
+  if (nrow(teste) < 1) {
+    message("Skipping ", nome_dataset, ": no test rows")
+    next
+  }
+  
+  # remove near-zero variance predictors
+  nzv <- nearZeroVar(treino, saveMetrics = TRUE)
+  cols_keep <- rownames(nzv)[!nzv$nzv]
+  cols_keep <- union(target, cols_keep)
+  
+  treino <- treino[, cols_keep, drop = FALSE]
+  teste  <- teste[, cols_keep, drop = FALSE]
+  
+  if (ncol(treino) < 2) {
+    message("Skipping ", nome_dataset, ": predictors removed after nearZeroVar")
+    next
+  }
+  
+  # adapt k to dataset size
+  max_k_allowed <- max(1, min(11, nrow(treino) - 1))
+  k_vals <- c(3, 5, 7, 9, 11)
+  k_vals <- k_vals[k_vals <= max_k_allowed]
+  
+  if (length(k_vals) == 0) {
+    message("Skipping ", nome_dataset, ": not enough training rows for KNN")
+    next
+  }
+  
+  tune_grid_knn <- expand.grid(
+    kmax = unique(k_vals),
+    distance = c(1, 2),
+    kernel = c("rectangular", "triangular", "epanechnikov")
+  )
+  
+  ctrl_knn <- make_ctrl(tune_grid_knn, seed = 42, number = 5, repeats = 5)
+  
+  set.seed(42)
+  model_knn <- train(
+    as.formula(paste(target, "~ .")),
+    data = treino,
+    method = "kknn",
+    preProcess = c("center", "scale"),
+    trControl = ctrl_knn,
+    tuneGrid = tune_grid_knn
+  )
+  
+  metricas_treino <- evaluate_model(model_knn, treino, target, paste(nome_dataset, "- Treino"))
+  metricas_teste  <- evaluate_model(model_knn, teste,  target, paste(nome_dataset, "- Teste"))
+  
+  resultados_knn_i <- bind_rows(resultados_knn_i, metricas_treino, metricas_teste)
+}
+
+print(resultados_knn_i)
+```
+
+```{r Random Forest Indices}
+resultados_rf_i <- data.frame()
+
+for (nome_dataset in names(datasets_index)) {
+  
+  df <- datasets_index[[nome_dataset]] %>%
+    na.omit()
+  
+  if (is.null(df) || nrow(df) < 5 || ncol(df) < 2) {
+    message("Skipping ", nome_dataset, ": too few rows or columns")
+    next
+  }
+  
+  target <- names(df)[1]
+  
+  if (is.na(target) || !(target %in% names(df))) {
+    message("Skipping ", nome_dataset, ": invalid target")
+    next
+  }
+  
+  n_pred <- ncol(df) - 1
+  
+  if (n_pred < 1) {
+    message("Skipping ", nome_dataset, ": no predictors")
+    next
+  }
+  
+  tune_grid_rf <- expand.grid(
+    mtry = unique(pmin(c(2, 3, 4, 5), n_pred)),
+    splitrule = c("variance", "extratrees"),
+    min.node.size = c(1, 5, 10)
+  )
+  
+  set.seed(42)
+  inTraining <- createDataPartition(df[[target]], p = 0.7, list = FALSE)
+  treino <- df[inTraining, ]
+  teste  <- df[-inTraining, ]
+  
+  if (nrow(teste) < 1) {
+    message("Skipping ", nome_dataset, ": no test rows")
+    next
+  }
+  
+  model_rf <- train(
+    as.formula(paste(target, "~ .")),
+    data = treino,
+    method = "ranger",
+    trControl = ctrl,
+    tuneGrid = tune_grid_rf,
+    importance = "impurity"
+  )
+  
+  metricas_treino <- evaluate_model(model_rf, treino, target, paste(nome_dataset, "- Treino"))
+  metricas_teste  <- evaluate_model(model_rf, teste, target, paste(nome_dataset, "- Teste"))
+  
+  resultados_rf_i <- bind_rows(resultados_rf_i, metricas_treino, metricas_teste)
+}
+
+print(resultados_rf_i)
+
+```
+
+
+
 ```{r Support Vector Machine Regression Model}
 
 resultados_svm <- data.frame()
 for (nome_dataset in names(datasets)) {
   df <- datasets[[nome_dataset]] %>% na.omit()
   target <- names(df)[1]
-  set.seed(123)
-  inTraining <- createDataPartition(df[[target]], p = 0.8, list = FALSE)
+  set.seed(42)
+  inTraining <- createDataPartition(df[[target]], p = 0.7, list = FALSE)
   treino <- df[inTraining,]
   teste <- df[-inTraining,]
   model_svm <- train(
@@ -1805,14 +2705,84 @@ for (nome_dataset in names(datasets)) {
 print(resultados_svm)
 ```
 
+```{r SVM Indices}
+resultados_svm_i <- data.frame()
+
+for (nome_dataset in names(datasets_index)) {
+  
+  df <- datasets_index[[nome_dataset]] %>%
+    na.omit()
+  
+  if (is.null(df) || nrow(df) < 5 || ncol(df) < 2) {
+    message("Skipping ", nome_dataset, ": too few rows or columns")
+    next
+  }
+  
+  target <- names(df)[1]
+  
+  if (is.na(target) || !(target %in% names(df))) {
+    message("Skipping ", nome_dataset, ": invalid target")
+    next
+  }
+  
+  n_pred <- ncol(df) - 1
+  
+  if (n_pred < 1) {
+    message("Skipping ", nome_dataset, ": no predictors")
+    next
+  }
+  
+  set.seed(42)
+  inTraining <- createDataPartition(df[[target]], p = 0.7, list = FALSE)
+  treino <- df[inTraining, ]
+  teste  <- df[-inTraining, ]
+  
+  if (nrow(teste) < 1) {
+    message("Skipping ", nome_dataset, ": no test rows")
+    next
+  }
+  
+  # optional: remove predictors with zero variance in training
+  nzv <- nearZeroVar(treino, saveMetrics = TRUE)
+  cols_keep <- rownames(nzv)[!nzv$nzv]
+  cols_keep <- union(target, cols_keep)
+  
+  treino <- treino[, cols_keep, drop = FALSE]
+  teste  <- teste[, cols_keep, drop = FALSE]
+  
+  if (ncol(treino) < 2) {
+    message("Skipping ", nome_dataset, ": predictors removed after nearZeroVar")
+    next
+  }
+  
+  model_svm <- train(
+    as.formula(paste(target, "~ .")),
+    data = treino,
+    method = "svmRadial",
+    preProcess = c("center", "scale"),
+    trControl = ctrl,
+    tuneGrid = tune_grid_svm
+  )
+  
+  metricas_treino <- evaluate_model(model_svm, treino, target, paste(nome_dataset, "- Treino"))
+  metricas_teste  <- evaluate_model(model_svm, teste,  target, paste(nome_dataset, "- Teste"))
+  
+  resultados_svm_i <- bind_rows(resultados_svm_i, metricas_treino, metricas_teste)
+}
+
+print(resultados_svm_i)
+```
+
+
+
 ```{r K Nearest Neighbor Regression Model}
 
 resultados_knn <- data.frame()
 for (nome_dataset in names(datasets)) {
   df <- datasets[[nome_dataset]] %>% na.omit()
   target <- names(df)[1]
-  set.seed(123)
-  inTraining <- createDataPartition(df[[target]], p = 0.8, list = FALSE)
+  set.seed(42)
+  inTraining <- createDataPartition(df[[target]], p = 0.7, list = FALSE)
   treino <- df[inTraining,]
   teste <- df[-inTraining,]
   model_knn <- train(
@@ -1828,6 +2798,90 @@ for (nome_dataset in names(datasets)) {
   resultados_knn <- bind_rows(resultados_knn, metricas_treino, metricas_teste)
 }
 print(resultados_knn)
+```
+
+```{r KNN Indices}
+resultados_knn_i <- data.frame()
+
+for (nome_dataset in names(datasets_index)) {
+  
+  df <- datasets_index[[nome_dataset]] %>%
+    na.omit()
+  
+  if (is.null(df) || nrow(df) < 5 || ncol(df) < 2) {
+    message("Skipping ", nome_dataset, ": too few rows or columns")
+    next
+  }
+  
+  target <- names(df)[1]
+  
+  if (is.na(target) || !(target %in% names(df))) {
+    message("Skipping ", nome_dataset, ": invalid target")
+    next
+  }
+  
+  n_pred <- ncol(df) - 1
+  
+  if (n_pred < 1) {
+    message("Skipping ", nome_dataset, ": no predictors")
+    next
+  }
+  
+  set.seed(42)
+  inTraining <- createDataPartition(df[[target]], p = 0.7, list = FALSE)
+  treino <- df[inTraining, ]
+  teste  <- df[-inTraining, ]
+  
+  if (nrow(teste) < 1) {
+    message("Skipping ", nome_dataset, ": no test rows")
+    next
+  }
+  
+  # remove near-zero variance predictors
+  nzv <- nearZeroVar(treino, saveMetrics = TRUE)
+  cols_keep <- rownames(nzv)[!nzv$nzv]
+  cols_keep <- union(target, cols_keep)
+  
+  treino <- treino[, cols_keep, drop = FALSE]
+  teste  <- teste[, cols_keep, drop = FALSE]
+  
+  if (ncol(treino) < 2) {
+    message("Skipping ", nome_dataset, ": predictors removed after nearZeroVar")
+    next
+  }
+  
+  # KNN cannot use k larger than training set size
+  max_k_allowed <- max(1, min(11, nrow(treino) - 1))
+  k_vals <- c(3, 5, 7, 9, 11)
+  k_vals <- k_vals[k_vals <= max_k_allowed]
+  
+  if (length(k_vals) == 0) {
+    message("Skipping ", nome_dataset, ": not enough training rows for KNN")
+    next
+  }
+  
+  tune_grid_knn_adapt <- expand.grid(
+    kmax = unique(k_vals),
+    distance = c(1, 2),
+    kernel = c("rectangular", "triangular", "epanechnikov")
+  )
+  
+  model_knn <- train(
+    as.formula(paste(target, "~ .")),
+    data = treino,
+    method = "kknn",
+    preProcess = c("center", "scale"),
+    trControl = ctrl,
+    tuneGrid = tune_grid_knn_adapt
+  )
+  
+  metricas_treino <- evaluate_model(model_knn, treino, target, paste(nome_dataset, "- Treino"))
+  metricas_teste  <- evaluate_model(model_knn, teste,  target, paste(nome_dataset, "- Teste"))
+  
+  resultados_knn_i <- bind_rows(resultados_knn_i, metricas_treino, metricas_teste)
+}
+
+print(resultados_knn_i)
 ```
 
 
@@ -1859,15 +2913,21 @@ print(resultados_xgb)
 ```{r Wrap-up And Exporting Results}
 # Adicionar uma coluna indicando o modelo correspondente
 resultados_rf$modelo <- "Random Forest"
+# resultados_rf_i$modelo <- "Random Forest Indices"
 resultados_svm$modelo <- "SVM Radial"
-resultados_knn$modelo <- "kNN"
+# resultados_svm_i$modelo <- "SVM Radial Indices"
+# resultados_knn$modelo <- "kNN"
+#resultados_knn_i$modelo <- "kNN Indices"
 #resultados_xgb$modelo <- "XGBoost "
 
 # Juntar todas as tabelas em um único dataframe
 resultados_finais <- bind_rows(
   resultados_rf,
+  # resultados_rf_i,
   resultados_svm,
-  resultados_knn,
+  # resultados_svm_i,
+  # resultados_knn,
+  #resultados_knn_i
   #resultados_xgb
 )
 
@@ -1875,7 +2935,401 @@ resultados_finais <- bind_rows(
 print(resultados_finais)
 
 # Se quiser salvar em CSV:
-write.csv(resultados_finais, "../Output/resultados.csv", row.names = FALSE)
+write.csv(resultados_finais, "../Output/resultados_noregind1.csv", row.names = FALSE)
+
+resultados_all <- read.csv("../Output/resultados_regnoind.csv")
+
+resultados_all
 ```
 
+```{r Heatmap}
+heat_df <- resultados_all %>%
+  separate(Dataset, into = c("dataset_raw", "set"), sep = "-", remove = FALSE) %>%
+  mutate(
+    dap = str_extract(dataset_raw, "\\d+"),
+    dap = as.numeric(dap),
+    variable = str_remove(dataset_raw, "\\d+"),
+    variable = case_when(
+      variable == "net_photo" ~ "pn",
+      TRUE ~ variable
+    )
+  ) %>%
+  pivot_longer(
+    cols = c(R2),
+    names_to = "metric",
+    values_to = "value"
+  ) 
+```
+
+```{r}
+ggplot(heat_df, aes(x = factor(dap), y = set, fill = value)) +
+  geom_tile() +
+  geom_text(aes(label = round(value, 2)), size = 3) +
+  facet_grid(metric + modelo ~ variable, scales = "free") +
+  scale_fill_viridis_c(option = "plasma") +
+  labs(
+    x = "DAP",
+    y = NULL,
+    fill = "Value"
+  ) +
+  theme_minimal() +
+  theme(
+    strip.text = element_text(face = "bold"),
+    panel.grid = element_blank()
+  )
+```
+```{r}
+
+heat_df2 <- resultados_all %>%
+  separate(Dataset, into = c("dataset_raw", "set"), sep = "-", remove = FALSE) %>%
+  mutate(
+    dap = str_extract(dataset_raw, "\\d+"),
+    dap = as.numeric(dap),
+    variable = str_remove(dataset_raw, "\\d+"),
+    variable = case_when(
+      variable == "net_photo" ~ "pn",
+      TRUE ~ variable
+    )
+  ) %>%
+  pivot_longer(
+    cols = c(RMSE),
+    names_to = "metric",
+    values_to = "value"
+  ) 
+
+ggplot(heat_df2, aes(x = factor(dap), y = set, fill = value)) +
+  geom_tile() +
+  geom_text(aes(label = round(value, 2)), size = 3) +
+  facet_grid(metric + modelo ~ variable, scales = "free") +
+  scale_fill_viridis_c(option = "plasma") +
+  labs(
+    x = "DAP",
+    y = NULL,
+    fill = "Value"
+  ) +
+  theme_minimal() +
+  theme(
+    strip.text = element_text(face = "bold"),
+    panel.grid = element_blank()
+  )
+```
+
+
+# 6) With Vegetation indices
+
+```{r Metadata list}
+datasets_idx <- list(
+  ca = list(
+    data = ponder_ca,
+    target = "ca",
+    predictors = index_cols_ca
+  ),
+  cb = list(
+    data = ponder_cb,
+    target = "cb",
+    predictors = index_cols_cb
+  ),
+  cx_c = list(
+    data = ponder_cx_c,
+    target = "cx_c",
+    predictors = index_cols_cx_c
+  ),
+  etr = list(
+    data = ponder_etr,
+    target = "etr",
+    predictors = index_cols_etr
+  ),
+  gs = list(
+    data = ponder_gs,
+    target = "gs",
+    predictors = index_cols_gs
+  ),
+  pn = list(
+    data = ponder_pn,
+    target = "pn",
+    predictors = index_cols_pn
+  )
+)
+```
+
+```{r Small helper to prepare each dataset}
+prepare_index_dataset <- function(df, target, predictors) {
+  keep_cols <- c(target, predictors)
+  
+  df %>%
+    select(any_of(keep_cols)) %>%
+    mutate(across(all_of(keep_cols), ~ suppressWarnings(as.numeric(as.character(.))))) %>%
+    select(where(~ !(is.numeric(.) && all(is.na(.))))) %>%
+    na.omit()
+}
+```
+
+```{r Evaluation function}
+evaluate_model <- function(model, dataset, target_name, dataset_name) {
+  predicoes <- predict(model, dataset)
+  obs <- dataset[[target_name]]
+  data.frame(
+    Dataset = dataset_name,
+    MAE = mean(abs(predicoes - obs)),
+    MSE = mean((predicoes - obs)^2),
+    RMSE = sqrt(mean((predicoes - obs)^2)),
+    R2 = cor(predicoes, obs)^2
+  )
+}
+```
+
+```{r RF Loop adapted}
+resultados_rf_idx <- data.frame()
+
+for (nome_dataset in names(datasets_idx)) {
+  
+  info <- datasets_idx[[nome_dataset]]
+  
+  df <- prepare_index_dataset(
+    df = info$data,
+    target = info$target,
+    predictors = info$predictors
+  )
+  
+  target <- info$target
+  
+  set.seed(123)
+  inTraining <- createDataPartition(df[[target]], p = 0.8, list = FALSE)
+  treino <- df[inTraining, ]
+  teste  <- df[-inTraining, ]
+  
+  model_rf <- train(
+    as.formula(paste(target, "~ .")),
+    data = treino,
+    method = "ranger",
+    trControl = ctrl,
+    tuneGrid = tune_grid_rf,
+    importance = "impurity"
+  )
+  
+  metricas_treino <- evaluate_model(model_rf, treino, target, paste(nome_dataset, "- Treino"))
+  metricas_teste  <- evaluate_model(model_rf, teste,  target, paste(nome_dataset, "- Teste"))
+  
+  resultados_rf_idx <- bind_rows(resultados_rf_idx, metricas_treino, metricas_teste)
+}
+
+print(resultados_rf_idx)
+```
+
+```{r SVM Adapted}
+resultados_svm_idx <- data.frame()
+
+for (nome_dataset in names(datasets_idx)) {
+  
+  info <- datasets_idx[[nome_dataset]]
+  
+  df <- prepare_index_dataset(
+    df = info$data,
+    target = info$target,
+    predictors = info$predictors
+  )
+  
+  target <- info$target
+  
+  set.seed(123)
+  inTraining <- createDataPartition(df[[target]], p = 0.8, list = FALSE)
+  treino <- df[inTraining, ]
+  teste  <- df[-inTraining, ]
+  
+  model_svm <- train(
+    as.formula(paste(target, "~ .")),
+    data = treino,
+    method = "svmRadial",
+    preProcess = c("center", "scale"),
+    trControl = ctrl,
+    tuneGrid = tune_grid_svm
+  )
+  
+  metricas_treino <- evaluate_model(model_svm, treino, target, paste(nome_dataset, "- Treino"))
+  metricas_teste  <- evaluate_model(model_svm, teste,  target, paste(nome_dataset, "- Teste"))
+  
+  resultados_svm_idx <- bind_rows(resultados_svm_idx, metricas_treino, metricas_teste)
+}
+
+print(resultados_svm_idx)
+```
+
+```{r KNN Adapted}
+resultados_knn_idx <- data.frame()
+
+for (nome_dataset in names(datasets_idx)) {
+  
+  info <- datasets_idx[[nome_dataset]]
+  
+  df <- prepare_index_dataset(
+    df = info$data,
+    target = info$target,
+    predictors = info$predictors
+  )
+  
+  target <- info$target
+  
+  set.seed(123)
+  inTraining <- createDataPartition(df[[target]], p = 0.8, list = FALSE)
+  treino <- df[inTraining, ]
+  teste  <- df[-inTraining, ]
+  
+  model_knn <- train(
+    as.formula(paste(target, "~ .")),
+    data = treino,
+    method = "kknn",
+    preProcess = c("center", "scale"),
+    trControl = ctrl,
+    tuneGrid = tune_grid_knn
+  )
+  
+  metricas_treino <- evaluate_model(model_knn, treino, target, paste(nome_dataset, "- Treino"))
+  metricas_teste  <- evaluate_model(model_knn, teste,  target, paste(nome_dataset, "- Teste"))
+  
+  resultados_knn_idx <- bind_rows(resultados_knn_idx, metricas_treino, metricas_teste)
+}
+
+print(resultados_knn_idx)
+```
+
+```{r}
+mutate(across(all_of(keep_cols), ~ suppressWarnings(as.numeric(as.character(.)))))
+```
+
+```{r}
+resultados_rf_idx$Model  <- "RF"
+resultados_svm_idx$Model <- "SVM"
+resultados_knn_idx$Model <- "KNN"
+
+resultados_all_idx <- bind_rows(
+  resultados_rf_idx,
+  resultados_svm_idx,
+  resultados_knn_idx
+)
+
+print(resultados_all_idx)
+```
+
+```{r}
+daps <- c(74, 75, 81, 82, 89, 109, 112)
+
+# Master specification
+dataset_specs <- list(
+  ca = list(data = ponder_ca,   target = "ca",   predictors = index_cols_ca),
+  cb = list(data = ponder_cb,   target = "cb",   predictors = index_cols_cb),
+  cx_c = list(data = ponder_cx_c, target = "cx_c", predictors = index_cols_cx_c),
+  etr = list(data = ponder_etr, target = "etr",  predictors = index_cols_etr),
+  gs = list(data = ponder_gs,   target = "gs",   predictors = index_cols_gs),
+  pn = list(data = ponder_pn,   target = "pn",   predictors = index_cols_pn)
+)
+
+# Build all DAP-specific datasets, ready for modeling
+datasets_idx_dap <- imap(dataset_specs, function(spec, varname) {
+  map(daps, function(d) {
+    list(
+      data = spec$data %>% filter(dap == d),
+      target = spec$target,
+      predictors = spec$predictors
+    )
+  }) %>%
+    set_names(paste0(varname, "_", daps))
+}) %>%
+  flatten()
+
+names(datasets_idx_dap)
+```
+```{r}
+prepare_index_dataset <- function(df, target, predictors) {
+  keep_cols <- c(target, predictors)
+  
+  df %>%
+    select(any_of(keep_cols)) %>%
+    mutate(across(all_of(keep_cols), ~ suppressWarnings(as.numeric(as.character(.))))) %>%
+    select(where(~ !(is.numeric(.) && all(is.na(.))))) %>%
+    na.omit()
+}
+```
+
+```{r}
+for (nome_dataset in names(datasets_idx_dap)) {
+
+  info <- datasets_idx_dap[[nome_dataset]]
+
+  df <- prepare_index_dataset(
+    df = info$data,
+    target = info$target,
+    predictors = info$predictors
+  )
+
+  # 🚨 Skip datasets with too few observations
+  if (nrow(df) < 5) {
+    message("Skipping ", nome_dataset, " (too few observations)")
+    next
+  }
+
+  target <- info$target
+
+  set.seed(123)
+  inTraining <- createDataPartition(df[[target]], p = 0.8, list = FALSE)
+
+  treino <- df[inTraining, ]
+  teste  <- df[-inTraining, ]
+
+  model_rf <- train(
+    as.formula(paste(target, "~ .")),
+    data = treino,
+    method = "ranger",
+    tuneGrid = tune_grid_rf,
+    importance = "impurity"
+  )
+
+  metricas_treino <- evaluate_model(model_rf, treino, target, paste(nome_dataset, "- Treino"))
+  metricas_teste  <- evaluate_model(model_rf, teste, target, paste(nome_dataset, "- Teste"))
+
+  resultados_rf_idx_dap <- bind_rows(resultados_rf_idx_dap, metricas_treino, metricas_teste)
+}
+```
+
+
+```{r}
+tune_grid_rf <- expand.grid(mtry = c(2, 3, 4, 5), splitrule = c("variance", "extratrees"), min.node.size = c(1, 5, 10))
+
+resultados_rf_idx_dap <- data.frame()
+
+for (nome_dataset in names(datasets_idx_dap)) {
+  
+  info <- datasets_idx_dap[[nome_dataset]]
+  
+  df <- prepare_index_dataset(
+    df = info$data,
+    target = info$target,
+    predictors = info$predictors
+  )
+  
+  # skip empty or tiny datasets
+  if (nrow(df) < 10) next
+  
+  target <- info$target
+  
+  set.seed(123)
+  inTraining <- createDataPartition(df[[target]], p = 0.8, list = FALSE)
+  treino <- df[inTraining, ]
+  teste  <- df[-inTraining, ]
+  
+  model_rf <- train(
+    as.formula(paste(target, "~ .")),
+    data = treino,
+    method = "ranger",
+    tuneGrid = tune_grid_rf,
+    importance = "impurity"
+  )
+  
+  metricas_treino <- evaluate_model(model_rf, treino, target, paste(nome_dataset, "- Treino"))
+  metricas_teste  <- evaluate_model(model_rf, teste,  target, paste(nome_dataset, "- Teste"))
+  
+  resultados_rf_idx_dap <- bind_rows(resultados_rf_idx_dap, metricas_treino, metricas_teste)
+}
+
+print(resultados_rf_idx_dap)
+```
 
