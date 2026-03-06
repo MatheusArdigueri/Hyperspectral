@@ -888,130 +888,562 @@ selected_bands_wl <- selected_bands %>%
 ```
 
 ```{r}
-names(selected_bands_wl)
+select_bcw <- selected_bands_wl %>%
+  pivot_wider(names_from = band,
+              values_from = coefficient)
+```
+```{r Getting Bands from EN}
+
+gs_bands_chr <- paste0("b_", gs_bands)
+
+
+gs_bands <- selected_bands_wl %>%
+  filter(variable == "gs") %>%
+  pull(band_num)
+
+pn_bands <- selected_bands_wl %>%
+  filter(variable == "pn") %>%
+  pull(band_num)
+
+pn_bands_chr <- paste0("b_", pn_bands)
+
+etr_bands <- selected_bands_wl %>%
+  filter(variable == "etr") %>%
+  pull(band_num)
+
+etr_bands_chr <- paste0("b_", etr_bands)
+
+ca_bands <- selected_bands_wl %>%
+  filter(variable == "ca") %>%
+  pull(band_num)
+
+ca_bands_chr <- paste0("b_", ca_bands)
+
+cb_bands <- selected_bands_wl %>%
+  filter(variable == "cb") %>%
+  pull(band_num)
+
+cb_bands_chr <- paste0("b_", cb_bands)
+
+cx_c_bands <- selected_bands_wl %>%
+  filter(variable == "cx_c") %>%
+  pull(band_num)
+cx_c_bands_chr <- paste0("b_", cx_c_bands)
+
 ```
 
+```{r Filtering Bands directly from ponder long}
+ponder_gs <- ponder_long %>%
+  filter(variable == "gs",
+         band %in% gs_bands_chr)%>%
+  pivot_wider(names_from = variable,
+              values_from = var_val) %>%
+  pivot_wider(names_from = band,
+              values_from = reflectance)
 
-```{r Calculating Vegetation indices}
-ponder_long <- ponder %>%
-  pivot_longer(
-    cols = starts_with("b_"),
-    names_to = "band",
-    values_to = "reflectance"
-  ) %>%
-  pivot_longer(cols = ca:etr,
-                names_to = "variable",
-                values_to = "var_val")
+ponder_pn <- ponder_long %>%
+  filter(variable == "pn",
+         band %in% pn_bands_chr)%>%
+  pivot_wider(names_from = variable,
+              values_from = var_val) %>%
+  pivot_wider(names_from = band,
+              values_from = reflectance)
 
-selected_reflectance <- ponder_long %>%
-  left_join(selected_bands_wl, by = "band")
+ponder_etr <- ponder_long %>%
+  filter(variable == "etr",
+         band %in% etr_bands_chr)%>%
+  pivot_wider(names_from = variable,
+              values_from = var_val) %>%
+  pivot_wider(names_from = band,
+              values_from = reflectance)
+
+ponder_ca <- ponder_long %>%
+  filter(variable == "ca",
+         band %in% ca_bands_chr)%>%
+  pivot_wider(names_from = variable,
+              values_from = var_val) %>%
+  pivot_wider(names_from = band,
+              values_from = reflectance)
+
+ponder_cb <- ponder_long %>%
+  filter(variable == "cb",
+         band %in% cb_bands_chr)%>%
+  pivot_wider(names_from = variable,
+              values_from = var_val) %>%
+  pivot_wider(names_from = band,
+              values_from = reflectance)
+
+ponder_cx_c <- ponder_long %>%
+  filter(variable == "cx_c",
+         band %in% cx_c_bands_chr)%>%
+  pivot_wider(names_from = variable,
+              values_from = var_val) %>%
+  pivot_wider(names_from = band,
+              values_from = reflectance)
 ```
 
-```{r}
-sel_ref2 <- selected_reflectance %>%
+blue    <- intersect(c("b_3","b_4","b_19","b_23"), gs_bands)
+green   <- intersect(c("b_70","b_76"), gs_bands)
+red     <- intersect(c("b_118","b_127"), gs_bands)
+rededge <- intersect(c("b_162","b_164"), gs_bands)
+nir     <- intersect(c("b_232","b_234","b_242","b_253","b_258","b_259","b_264",
+                       "b_267","b_268","b_280","b_281","b_285"), gs_bands)
+
+```{r Calculating Vegetation indices for gs}
+
+ponder_gs <- ponder_gs %>%
   mutate(
-    phys_value = case_when(
-      variable == "pn"   ~ pn,
-      variable == "gs"   ~ gs,
-      variable == "etr"  ~ etr,
-      variable == "ca"   ~ ca,
-      variable == "cb"   ~ cb,
-      variable == "cx_c" ~ cx_c
-    )
+
+    # NDVI variants (canopy vigor / greenness proxies)
+    ndvi_gs1 = (b_232 - b_118) / (b_232 + b_118),
+    ndvi_gs2 = (b_285 - b_127) / (b_285 + b_127),
+
+    # NDRE variants (red-edge sensitivity; often tracks physiology better than NDVI)
+    ndre_gs1 = (b_232 - b_162) / (b_232 + b_162),
+    ndre_gs2 = (b_285 - b_164) / (b_285 + b_164),
+
+    # CIgreen-like (NIR/Green - 1)
+    ci_green_gs1 = (b_232 / b_76) - 1,
+    ci_green_gs2 = (b_285 / b_70) - 1,
+
+    # CIred-edge-like (NIR/RedEdge - 1)
+    ci_re_gs1 = (b_232 / b_162) - 1,
+    ci_re_gs2 = (b_285 / b_164) - 1,
+
+    # Simple Ratios
+    sr_gs1 = b_232 / b_118,
+    sr_gs2 = b_285 / b_127,
+
+    # NIR / RedEdge ratios
+    srre_gs1 = b_232 / b_162,
+    srre_gs2 = b_285 / b_164,
+
+    # Blue–Green pigment proxy (stress / pigment balance-ish)
+    nd_blue_green_gs1 = (b_76 - b_23) / (b_76 + b_23),
+    nd_blue_green_gs2 = (b_70 - b_19) / (b_70 + b_19),
+
+    # Red-edge slope proxy (edge “strength”)
+    re_slope_gs1 = (b_164 - b_162) / (b_164 + b_162)
+
   )
+
 ```
 
-```{r Heatmap Spearman correlation}
-library(dplyr)
-library(ggplot2)
+```{r Heat gs indices}
+index_cols_gs <- c(
+  "ndvi_gs1","ndvi_gs2",
+  "ndre_gs1","ndre_gs2",
+  "ci_green_gs1","ci_green_gs2",
+  "ci_re_gs1","ci_re_gs2",
+  "sr_gs1","sr_gs2",
+  "srre_gs1","srre_gs2",
+  "nd_blue_green_gs1","nd_blue_green_gs2",
+  "re_slope_gs1"
+)
 
-# reorder-within-facet trick (no extra packages)
-ggplot(spearman_facet, aes(x = x_in_facet, y = 1, fill = rho)) +
+spearman_idx_gs <- ponder_gs %>%
+  summarise(across(
+    all_of(index_cols_gs),
+    ~cor(.x, gs, method = "spearman", use = "complete.obs")
+  )) %>%
+  pivot_longer(everything(),
+               names_to = "index",
+               values_to = "rho")
+
+gs_heat <- ggplot(spearman_idx_gs, aes(x = index, y = "gs", fill = rho)) +
   geom_tile() +
-  geom_text(aes(label = sprintf("%.2f", rho)), size = 3) +
-  facet_wrap(~variable, scales = "free_x", ncol = 1) +
-  scale_fill_viridis_c(
-    option = "plasma",
-    name = "Spearman ρ",
-    limits = c(-1, 1)
-  ) +
-  scale_x_discrete(labels = function(x) sub(".*___", "", x)) +
-  labs(x = "Selected bands", y = NULL) +
+  geom_text(aes(label = sprintf("%.2f", rho)), size = 4) +
+  scale_fill_viridis_c(option = "plasma", limits = c(-1,1), name = "Spearman ρ") +
+  labs(x = "Vegetation indices", y = NULL) +
   theme_minimal() +
   theme(
-    strip.text = element_text(face = "bold"),
-    axis.text.y = element_blank(),
-    axis.ticks.y = element_blank(),
-    panel.grid = element_blank(),
-    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid = element_blank()
   )
 ```
-```{r}
-topK <- 10
 
-sel_top <- selected_bands_wl %>%
-  group_by(variable) %>%
-  slice_max(abs_coef, n = topK, with_ties = FALSE) %>%
-  ungroup() %>%
-  select(variable, band, wavelength) %>%
-  distinct()
+```{r Calculating Veg indices for Chl a}
 
-spearman_sel_top <- ponder_long %>%
-  inner_join(sel_top, by = "band") %>%
+ponder_ca <- ponder_ca %>%
   mutate(
-    phys_value = case_when(
-      variable == "pn"   ~ pn,
-      variable == "gs"   ~ gs,
-      variable == "etr"  ~ etr,
-      variable == "ca"   ~ ca,
-      variable == "cb"   ~ cb,
-      variable == "cx_c" ~ cx_c,
-      TRUE ~ NA_real_
-    )
-  ) %>%
-  filter(!is.na(phys_value)) %>%
-  group_by(variable, band, wavelength) %>%
-  summarise(
-    rho = cor(reflectance, phys_value, method = "spearman", use = "complete.obs"),
-    .groups = "drop"
+
+  # NDVI variants (chlorophyll / canopy vigor)
+  ndvi_ca1 = (b_252 - b_123) / (b_252 + b_123),
+  ndvi_ca2 = (b_271 - b_139) / (b_271 + b_139),
+
+  # NDRE variants (chlorophyll content, nitrogen status)
+  ndre_ca1 = (b_252 - b_151) / (b_252 + b_151),
+  ndre_ca2 = (b_271 - b_155) / (b_271 + b_155),
+  ndre_ca3 = (b_280 - b_156) / (b_280 + b_156),
+
+  # Chlorophyll Index Green (approximate version)
+  ci_green1 = (b_252 / b_92) - 1,
+  ci_green2 = (b_271 / b_92) - 1,
+
+  # Chlorophyll Index Red Edge
+  ci_re1 = (b_252 / b_155) - 1,
+  ci_re2 = (b_271 / b_155) - 1,
+
+  # Simple Ratio indices (often correlate with chlorophyll)
+  sr_ca1 = b_252 / b_123,
+  sr_ca2 = b_271 / b_139,
+
+  # Blue-Red chlorophyll absorption ratio
+  br_chl1 = b_34 / b_123,
+  br_chl2 = b_48 / b_139,
+
+  # Red-Edge position proxy
+  rep_proxy = (b_174 - b_151) / (b_174 + b_151)
+
   )
 
-library(forcats)
+```
 
-spearman_sel_top2 <- spearman_sel_top %>%
-  mutate(
-    xlab = paste0(round(wavelength), " nm"),
-    xlab = fct_reorder(xlab, wavelength)   # order left→right by wavelength
-  )
+```{r Heat ca indices}
+index_cols <- c(
+"ndvi_ca1","ndvi_ca2",
+"ndre_ca1","ndre_ca2","ndre_ca3",
+"ci_green1","ci_green2",
+"ci_re1","ci_re2",
+"sr_ca1","sr_ca2",
+"br_chl1","br_chl2",
+"rep_proxy"
+)
 
-ggplot(spearman_sel_top2, aes(x = xlab, y = variable, fill = rho)) +
+spearman_idx <- ponder_ca %>%
+  summarise(across(
+    all_of(index_cols),
+    ~cor(.x, ca, method = "spearman", use = "complete.obs")
+  )) %>%
+  pivot_longer(everything(),
+               names_to = "index",
+               values_to = "rho")
+
+ca_heat <- ggplot(spearman_idx, aes(x = index, y = "gs", fill = rho)) +
   geom_tile() +
-  labs(x = "Selected bands", y = NULL, fill = "Spearman ρ") +
+  geom_text(aes(label = sprintf("%.2f", rho)), size = 4) +
+  scale_fill_viridis_c(option = "plasma", limits = c(-1,1), name = "Spearman ρ") +
+  labs(x = "Vegetation indices", y = NULL) +
   theme_minimal() +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid = element_blank())
+
+ggsave(filename = "../Output/heat_ca_spearm.png",
+       plot = ca_heat,
+       )
+
 ```
 
-```{r}
-phys_vars <- c("pn","gs","etr","ca","cb","cx_c")
+```{r Calculating Veg indices for pn}
+ponder_pn <- ponder_pn %>%
+  mutate(
 
-spearman_all <- ponder_long %>%
-  pivot_longer(
-    cols = all_of(phys_vars),
-    names_to = "variable",
-    values_to = "phys_value"
-  ) %>%
-  group_by(variable, band_num, wavelength) %>%
-  summarise(
-    rho = cor(reflectance, phys_value, method = "spearman", use = "complete.obs"),
-    .groups = "drop"
+    # --- NDVI family (NIR vs Red) ---
+    ndvi_pn1 = (b_253 - b_136) / (b_253 + b_136),
+    ndvi_pn2 = (b_281 - b_138) / (b_281 + b_138),
+    ndvi_pn3 = (b_242 - b_136) / (b_242 + b_136),
+
+    # --- NDRE family (NIR vs RedEdge) ---
+    ndre_pn1 = (b_253 - b_164) / (b_253 + b_164),
+    ndre_pn2 = (b_281 - b_162) / (b_281 + b_162),
+    ndre_pn3 = (b_242 - b_172) / (b_242 + b_172),
+
+    # --- CIgreen-like (NIR / Green - 1) ---
+    ci_green_pn1 = (b_253 / b_74) - 1,   # 906 / 546
+    ci_green_pn2 = (b_242 / b_70) - 1,   # 884 / 538
+
+    # --- CIred-edge-like (NIR / RedEdge - 1) ---
+    ci_re_pn1 = (b_253 / b_164) - 1,     # 906 / 727
+    ci_re_pn2 = (b_281 / b_162) - 1,     # 962 / 723
+
+    # --- Simple Ratio families (often correlate with productivity) ---
+    sr_nir_red_pn1 = b_253 / b_136,
+    sr_nir_re_pn1  = b_253 / b_164,
+
+    # --- Blue/Green pigment proxies (photosynthesis is pigment-driven) ---
+    nd_blue_green1 = (b_74 - b_22) / (b_74 + b_22),   # 546 vs 442
+    nd_blue_green2 = (b_70 - b_16) / (b_70 + b_16),   # 538 vs 430
+
+    # --- Red-edge slope / “edge strength” proxies ---
+    re_slope_pn1 = (b_174 - b_149) / (b_174 + b_149), # 747 vs 697
+    re_slope_pn2 = (b_173 - b_162) / (b_173 + b_162)  # 745 vs 723
   )
 ```
 
-```{r}
-ggplot(spearman_all, aes(x = wavelength, y = variable, fill = rho)) +
+```{r Heat spear pn}
+index_cols_pn <- c(
+  "ndvi_pn1",
+  "ndvi_pn2",
+  "ndvi_pn3",
+  "ndre_pn1",
+  "ndre_pn2",
+  "ndre_pn3",
+  "ci_green_pn1",
+  "ci_green_pn2",
+  "ci_re_pn1",
+  "ci_re_pn2",
+  "sr_nir_red_pn1",
+  "sr_nir_re_pn1",
+  "nd_blue_green1",
+  "nd_blue_green2",
+  "re_slope_pn1",
+  "re_slope_pn2"
+)
+
+spearman_idx <- ponder_pn %>%
+  summarise(across(
+    all_of(index_cols_pn),
+    ~cor(.x, pn, method = "spearman", use = "complete.obs")
+  )) %>%
+  pivot_longer(everything(),
+               names_to = "index",
+               values_to = "rho")
+
+pn_heat <- ggplot(spearman_idx, aes(x = index, y = "gs", fill = rho)) +
   geom_tile() +
-  labs(x = "Wavelength (nm)", y = NULL, fill = "Spearman ρ") +
-  theme_minimal()
+  geom_text(aes(label = sprintf("%.2f", rho)), size = 4) +
+  scale_fill_viridis_c(option = "plasma", limits = c(-1,1), name = "Spearman ρ") +
+  labs(x = "Vegetation indices", y = NULL) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid = element_blank())
+```
+
+```{r Calculating Veg indices for ETR}
+ponder_etr <- ponder_etr %>%
+  mutate(
+
+  # NDVI family (NIR vs Red)
+  ndvi_etr1 = (b_253 - b_113)/(b_253 + b_113),
+  ndvi_etr2 = (b_281 - b_113)/(b_281 + b_113),
+  ndvi_etr3 = (b_238 - b_113)/(b_238 + b_113),
+
+  # NDRE family (NIR vs RedEdge)
+  ndre_etr1 = (b_253 - b_164)/(b_253 + b_164),
+  ndre_etr2 = (b_238 - b_162)/(b_238 + b_162),
+  ndre_etr3 = (b_281 - b_173)/(b_281 + b_173),
+
+  # CIgreen-like
+  ci_green_etr1 = (b_253/b_74) - 1,
+  ci_green_etr2 = (b_238/b_74) - 1,
+
+  # CIred-edge-like
+  ci_re_etr1 = (b_253/b_164) - 1,
+  ci_re_etr2 = (b_281/b_162) - 1,
+
+  # Simple ratios
+  sr_nir_red_etr1 = b_253/b_113,
+  sr_nir_re_etr1  = b_253/b_164,
+
+  # Blue-green pigment proxies
+  nd_blue_green_etr1 = (b_74 - b_6)/(b_74 + b_6),
+  nd_blue_green_etr2 = (b_74 - b_42)/(b_74 + b_42),
+
+  # Red-edge slope proxies
+  re_slope_etr1 = (b_174 - b_145)/(b_174 + b_145),
+  re_slope_etr2 = (b_173 - b_162)/(b_173 + b_162)
+
+  )
+```
+
+```{r Heat spear etr}
+index_cols_etr <- c(
+  "ndvi_etr1",
+  "ndvi_etr2",
+  "ndvi_etr3",
+  "ndre_etr1",
+  "ndre_etr2",
+  "ndre_etr3",
+  "ci_green_etr1",
+  "ci_green_etr2",
+  "ci_re_etr1",
+  "ci_re_etr2",
+  "sr_nir_red_etr1",
+  "sr_nir_re_etr1",
+  "nd_blue_green_etr1",
+  "nd_blue_green_etr2",
+  "re_slope_etr1",
+  "re_slope_etr2"
+)
+
+spearman_idx <- ponder_etr %>%
+  summarise(across(
+    all_of(index_cols_etr),
+    ~cor(.x, etr, method = "spearman", use = "complete.obs")
+  )) %>%
+  pivot_longer(everything(),
+               names_to = "index",
+               values_to = "rho")
+
+etr_heat <- ggplot(spearman_idx, aes(x = index, y = "gs", fill = rho)) +
+  geom_tile() +
+  geom_text(aes(label = sprintf("%.2f", rho)), size = 4) +
+  scale_fill_viridis_c(option = "plasma", limits = c(-1,1), name = "Spearman ρ") +
+  labs(x = "Vegetation indices", y = NULL) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid = element_blank())
+
+```
+```{r Calculating Veg indices for Chl B}
+ponder_cb <- ponder_cb %>%
+  mutate(
+
+    # NDVI family (NIR vs Red)
+    ndvi_cb1 = (b_252 - b_123) / (b_252 + b_123),
+    ndvi_cb2 = (b_271 - b_123) / (b_271 + b_123),
+
+    # NDRE family (NIR vs RedEdge)
+    ndre_cb1 = (b_252 - b_155) / (b_252 + b_155),
+    ndre_cb2 = (b_271 - b_157) / (b_271 + b_157),
+    ndre_cb3 = (b_280 - b_161) / (b_280 + b_161),
+
+    # CIgreen-like (NIR / Green - 1)  [you only have one green band ~540]
+    ci_green_cb1 = (b_252 / b_71) - 1,
+    ci_green_cb2 = (b_271 / b_71) - 1,
+
+    # CIred-edge-like (NIR / RedEdge - 1)
+    ci_re_cb1 = (b_252 / b_155) - 1,
+    ci_re_cb2 = (b_271 / b_155) - 1,
+
+    # Simple ratios (often correlate with chlorophyll)
+    sr_nir_red_cb1 = b_252 / b_123,
+    sr_nir_re_cb1  = b_252 / b_155,
+
+    # Blue/Red absorption ratios (pigment proxies)
+    br_cb1 = b_34 / b_123,
+    br_cb2 = b_54 / b_123,
+
+    # Blue/Green pigment proxy
+    nd_blue_green_cb1 = (b_71 - b_18) / (b_71 + b_18),
+    nd_blue_green_cb2 = (b_71 - b_54) / (b_71 + b_54),
+
+    # Red-edge slope / strength proxies (using available RE bands)
+    re_slope_cb1 = (b_161 - b_155) / (b_161 + b_155),
+    re_slope_cb2 = (b_159 - b_155) / (b_159 + b_155)
+
+  )
+```
+
+```{r Heat spear Chl B}
+index_cols_cb <- c(
+  "ndvi_cb1",
+  "ndvi_cb2",
+  "ndre_cb1",
+  "ndre_cb2",
+  "ndre_cb3",
+  "ci_green_cb1",
+  "ci_green_cb2",
+  "ci_re_cb1",
+  "ci_re_cb2",
+  "sr_nir_red_cb1",
+  "sr_nir_re_cb1",
+  "br_cb1",
+  "br_cb2",
+  "nd_blue_green_cb1",
+  "nd_blue_green_cb2",
+  "re_slope_cb1",
+  "re_slope_cb2"
+)
+
+spearman_idx_cb <- ponder_cb %>%
+  summarise(across(
+    all_of(index_cols_cb),
+    ~cor(.x, cb, method = "spearman", use = "complete.obs")
+  )) %>%
+  pivot_longer(everything(),
+               names_to = "index",
+               values_to = "rho")
+
+cb_heat <- ggplot(spearman_idx_cb, aes(x = index, y = "gs", fill = rho)) +
+  geom_tile() +
+  geom_text(aes(label = sprintf("%.2f", rho)), size = 4) +
+  scale_fill_viridis_c(option = "plasma", limits = c(-1,1), name = "Spearman ρ") +
+  labs(x = "Vegetation indices", y = NULL) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid = element_blank())
+
+```
+```{r Veg Indices for Cx_C}
+ponder_cx_c <- ponder_cx_c %>%
+  mutate(
+
+    # --- NDVI / chlorophyll–structure baseline ---
+    ndvi_cx1 = (b_271 - b_123) / (b_271 + b_123),
+    ndvi_cx2 = (b_281 - b_139) / (b_281 + b_139),
+
+    # --- NDRE (pigment / red-edge sensitivity) ---
+    ndre_cx1 = (b_271 - b_155) / (b_271 + b_155),
+    ndre_cx2 = (b_281 - b_156) / (b_281 + b_156),
+    ndre_cx3 = (b_253 - b_151) / (b_253 + b_151),
+
+    # --- CIgreen-like (NIR / Green - 1) ---
+    # You have a green band at ~583 (b_92)
+    ci_green_cx1 = (b_271 / b_92) - 1,
+    ci_green_cx2 = (b_281 / b_92) - 1,
+
+    # --- CIred-edge-like (NIR / RedEdge - 1) ---
+    ci_re_cx1 = (b_271 / b_155) - 1,
+    ci_re_cx2 = (b_281 / b_155) - 1,
+
+    # --- Blue/Green pigment proxies (carotenoids live in the blue) ---
+    nd_blue_green_cx1 = (b_92 - b_18) / (b_92 + b_18),
+    nd_blue_green_cx2 = (b_92 - b_42) / (b_92 + b_42),
+
+    # --- Blue/Red pigment balance proxies ---
+    br_cx1 = b_36 / b_123,   # blue-ish / red
+    br_cx2 = b_49 / b_139,   # blue-ish / deep red
+
+    # --- Red-edge slope proxies (edge strength / pigment transition) ---
+    re_slope_cx1 = (b_174 - b_146) / (b_174 + b_146),
+    re_slope_cx2 = (b_173 - b_151) / (b_173 + b_151)
+
+  )
+```
+
+```{r Heatmap Cx_C}
+index_cols_cx_c <- c(
+  "ndvi_cx1",
+  "ndvi_cx2",
+  "ndre_cx1",
+  "ndre_cx2",
+  "ndre_cx3",
+  "ci_green_cx1",
+  "ci_green_cx2",
+  "ci_re_cx1",
+  "ci_re_cx2",
+  "nd_blue_green_cx1",
+  "nd_blue_green_cx2",
+  "br_cx1",
+  "br_cx2",
+  "re_slope_cx1",
+  "re_slope_cx2"
+)
+
+spearman_idx_cxc <- ponder_cx_c %>%
+  summarise(across(
+    all_of(index_cols_cx_c),
+    ~cor(.x, cx_c, method = "spearman", use = "complete.obs")
+  )) %>%
+  pivot_longer(everything(),
+               names_to = "index",
+               values_to = "rho")
+
+cb_heat <- ggplot(spearman_idx_cxc, aes(x = index, y = "gs", fill = rho)) +
+  geom_tile() +
+  geom_text(aes(label = sprintf("%.2f", rho)), size = 4) +
+  scale_fill_viridis_c(option = "plasma", limits = c(-1,1), name = "Spearman ρ") +
+  labs(x = "Vegetation indices", y = NULL) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid = element_blank())
+
 ```
 
 ```{r}
@@ -1033,169 +1465,6 @@ ggplot(data = selected_bands_wl,
   
 
   
-```
-```{r Define response variables for 25}
-phys_vars <- c("gs", "pn","etr","ca","cb","cx_c")
-
-clean_ponder_na25 <- clean_ponder %>%
-  drop_na()
-  
-X <- clean_ponder_na25 %>%
-  filter(year == 2025) %>%
-  select(starts_with("b_")) %>%
-  as.matrix()
-
-X <- scale(X)
-```
-
-```{r Elastic Net 2025}
-enet_results25 <- map_df(phys_vars, function(var) {
-  
-  y <- clean_ponder_na25[[var]]
-  
-  cv_enet <- cv.glmnet(
-    x = X,
-    y = y,
-    alpha = 0.6,          # Elastic Net
-    standardize = TRUE,
-    nfolds = 20
-  )
-  
-  coef_mat <- coef(cv_enet, s = "lambda.min")
-  
-  tibble(
-    band = rownames(coef_mat),
-    coefficient = as.numeric(coef_mat),
-    variable = var
-  ) %>%
-    filter(band != "(Intercept)") %>%
-    mutate(
-      abs_coef = abs(coefficient),
-      band_num = as.numeric(str_remove(band, "b_"))
-    ) %>%
-    arrange(desc(abs_coef)) %>%     # sort by importance
-    slice_head(n = 50)              # keep only top 15 bands
-})
-```
-
-```{r Select important bands 25}
-selected_bands25 <- enet_results25 %>%
-  filter(abs_coef != 0)
-
-```
-
-```{r}
-selected_bands_wl25 <- selected_bands25 %>%
-  mutate(
-    wavelength = round(band_to_wavelength(band_num),0)
-  )
-
-```
-
-```{r}
-ggplot(data = selected_bands_wl25,
-       aes(x = wavelength,
-           y = coefficient
-           )) +
-  geom_line() +
-  facet_wrap(~ variable, scales = "free_y") +
-  geom_hline(yintercept = 0) 
-  
-
-  
-```
-
-```{r}
-selec <- selected_bands_wl %>%
-  group_by(variable) %>%
-  arrange(desc(abs_coef), .by_group = TRUE)
- 
-
-```
-
-```{r Elastic Net Selected Band Graph}
-library(ggplot2)
-library(dplyr)
-
-variable_labels <- c(
-  gs = "Stomata Cond. (mol m-2s-1)",
-  pn = "Net Photo (µmol m-2s-1)",
-  etr = "ETR (µmol m-2s-1)",
-  ca = "Chl.a (µg/cm-2)",
-  cb = "Chl.b (µg/cm-2)",
-  cx_c = "Car (µg/cm-2)"
-)
-
-elastic_net_p <- ggplot(selected_bands_wl, aes(x = wavelength, y = abs_coef, color = variable)) +
-  geom_segment(aes(x = wavelength, xend = wavelength, y = 0, yend = abs_coef),
-               linewidth = 0.6, alpha = 0.7) +
-  geom_point(size = 2) +
-  facet_wrap(~ variable, scales = "free_y", ncol = 2, labeller = labeller(variable = variable_labels)) +
-  labs(
-    title = element_blank(),
-    x = "Wavelength (nm)",
-    y = "Absolute Coefficient (Importance)"
-  ) +
-  theme_light() +
-  theme(
-    plot.title = element_text(hjust = 0.5, size = 16),
-    strip.text = element_text(size = 12, face = "bold"),
-    legend.position = "none"
-  )
-
-elastic_net_p
-
-ggsave(elastic_net_p, 
-       filename = "../Output/enimp.png", 
-       dpi = 600,
-       height = 10,
-       width = 8)
-
-```
-
-```{r}
-selected_band_names <- selected_bands %>%
-  pull(band) %>%
-  unique()
-
-```
-
-```{r}
-df_corr <- clean_ponder %>%
-  select(all_of(selected_band_names), all_of(phys_vars))
-
-```
-
-```{r Convert bands → wavelengths}
-wavelengths <- seq(400, 1000, length.out = 300)
-
-selected_bands <- selected_bands %>%
-  mutate(wavelength = wavelengths[band_num])
-
-```
-
-```{r Summarize band importance across traits}
-stable_bands <- selected_bands %>%
-  group_by(band_num, wavelength) %>%
-  summarise(
-    n_traits = n_distinct(variable),
-    mean_abs_coef = mean(abs_coef),
-    .groups = "drop"
-  ) %>%
-  arrange(desc(n_traits), desc(mean_abs_coef))
-
-```
-
-```{r}
-phys_vars <- c("gs", "net_photo", "etr", "ca", "cb", "cx_c")
-
-# keep band_num + phys_vars
-df_corr <- clean_ponder %>%
-  select(stable_bands$band_num, all_of(phys_vars)) %>%
-  select(where(is.numeric))
-
-names(df_corr)
-
 ```
 
 #5) Regressions
